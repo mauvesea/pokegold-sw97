@@ -52,10 +52,9 @@ Landmarks:
 	landmark 132,  64, Route45Name
 	landmark 112,  72, DarkCaveName
 	landmark 124,  88, Route46Name
-	landmark 148,  68, SilverCaveName
-	assert_table_length KANTO_LANDMARK
-	landmark  52, 108, PalletTownName
 	landmark  52,  92, Route1Name
+	landmark 148,  68, SilverCaveName
+	landmark  52, 108, PalletTownName
 	landmark  52,  76, ViridianCityName
 	landmark  52,  64, Route2Name
 	landmark  52,  52, PewterCityName

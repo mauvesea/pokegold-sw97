@@ -19,6 +19,9 @@ PlayersHouse2FInitializeRoomCallback:
 	checkevent EVENT_INITIALIZED_EVENTS
 	iftrue .SkipInitialization
 	setflag ENGINE_POKEGEAR
+	setflag ENGINE_RADIO_CARD
+	setflag ENGINE_MAP_CARD
+	setflag ENGINE_PHONE_CARD
 	jumpstd InitializeEventsScript
 	endcallback
 

@@ -20,15 +20,8 @@ IsInJohto::
 	call GetWorldMapLocation
 
 .CheckRegion:
-	cp KANTO_LANDMARK
-	jr nc, .Kanto
-
 .Johto:
 	xor a ; JOHTO_REGION
-	ret
-
-.Kanto:
-	ld a, KANTO_REGION
 	ret
 
 SetXYCompareFlags::

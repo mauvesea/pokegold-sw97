@@ -122,8 +122,6 @@ DEF JOHTO_FLYPOINT EQU const_value
 	const FLY_LAKE_OF_RAGE
 	const FLY_BLACKTHORN
 	const FLY_MT_SILVER
-; kanto
-DEF KANTO_FLYPOINT EQU const_value
 	const FLY_PALLET
 	const FLY_VIRIDIAN
 	const FLY_PEWTER

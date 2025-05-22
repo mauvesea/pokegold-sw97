@@ -318,18 +318,7 @@ InitPokegearTilemap:
 	db "Today is...@"
 
 .Map:
-	ld a, [wPokegearMapPlayerIconLandmark]
-	cp LANDMARK_FAST_SHIP
-	jr z, .johto
-	cp KANTO_LANDMARK
-	jr nc, .kanto
-.johto
 	ld e, 0
-	jr .ok
-
-.kanto
-	ld e, 1
-.ok
 	farcall PokegearMap
 	ld a, [wPokegearMapCursorLandmark]
 	call PokegearMap_UpdateLandmarkName
@@ -563,19 +552,7 @@ Pokegear_UpdateWeekday:
 	text_end
 
 PokegearMap_CheckRegion:
-	ld a, [wPokegearMapPlayerIconLandmark]
-	cp LANDMARK_FAST_SHIP
-	jr z, .johto
-	cp KANTO_LANDMARK
-	jr nc, .kanto
-.johto
 	ld a, POKEGEARSTATE_JOHTOMAPINIT
-	jr .done
-	ret
-
-.kanto
-	ld a, POKEGEARSTATE_KANTOMAPINIT
-.done
 	ld [wJumptableIndex], a
 	call ExitPokegearRadio_HandleMusic
 	ret
@@ -602,8 +579,8 @@ PokegearMap_KantoMap:
 	jr PokegearMap_ContinueMap
 
 PokegearMap_JohtoMap:
-	ld d, LANDMARK_SILVER_CAVE
-	ld e, LANDMARK_NEW_BARK_TOWN
+	ld d, LANDMARK_SILVER_CAVE ; final Town Map Location
+	ld e, LANDMARK_NEW_BARK_TOWN ; initial Town Map Location
 PokegearMap_ContinueMap:
 	ld hl, hJoyLast
 	ld a, [hl]
@@ -1551,18 +1528,6 @@ RadioChannels:
 	ret
 
 .InJohto:
-; if in Johto or on the S.S. Aqua, set carry
-; otherwise clear carry
-	ld a, [wPokegearMapPlayerIconLandmark]
-	cp LANDMARK_FAST_SHIP
-	jr z, .johto
-	cp KANTO_LANDMARK
-	jr c, .johto
-; kanto
-	and a
-	ret
-
-.johto
 	scf
 	ret
 
@@ -1797,19 +1762,8 @@ _TownMap:
 	call DelayFrame
 
 .dmg
-	ld a, [wTownMapPlayerIconLandmark]
-	cp KANTO_LANDMARK
-	jr nc, .kanto
-	ld d, KANTO_LANDMARK - 1
 	ld e, 1
 	call .loop
-	jr .resume
-
-.kanto
-	call TownMap_GetKantoLandmarkLimits
-	call .loop
-
-.resume
 	pop af
 	ld [wVramState], a
 	pop af
@@ -1880,15 +1834,7 @@ _TownMap:
 	jr .loop2
 
 .InitTilemap:
-	ld a, [wTownMapPlayerIconLandmark]
-	cp KANTO_LANDMARK
-	jr nc, .kanto2
 	ld e, JOHTO_REGION
-	jr .okay_tilemap
-
-.kanto2
-	ld e, KANTO_REGION
-.okay_tilemap
 	farcall PokegearMap
 	ld a, [wTownMapCursorLandmark]
 	call PokegearMap_UpdateLandmarkName
@@ -2238,15 +2184,13 @@ FlyMap:
 	call GetWorldMapLocation
 .CheckRegion:
 ; The first 46 locations are part of Johto. The rest are in Kanto.
-	cp KANTO_LANDMARK
-	jr nc, .KantoFlyMap
 ; Johto fly map
 ; Note that .NoKanto should be modified in tandem with this branch
 	push af
 	ld a, JOHTO_FLYPOINT ; first Johto flypoint
 	ld [wTownMapPlayerIconLandmark], a ; first one is default (New Bark Town)
 	ld [wStartFlypoint], a
-	ld a, KANTO_FLYPOINT - 1 ; last Johto flypoint
+	ld a, FLY_INDIGO
 	ld [wEndFlypoint], a
 ; Fill out the map
 	call FillJohtoMap
@@ -2255,42 +2199,6 @@ FlyMap:
 	call TownMapPlayerIcon
 	ret
 
-.KantoFlyMap:
-; The event that there are no flypoints enabled in a map is not
-; accounted for. As a result, if you attempt to select a flypoint
-; when there are none enabled, the game will crash. Additionally,
-; the flypoint selection has a default starting point that
-; can be flown to even if none are enabled.
-; To prevent both of these things from happening when the player
-; enters Kanto, fly access is restricted until Indigo Plateau is
-; visited and its flypoint enabled.
-	push af
-	ld c, SPAWN_INDIGO
-	call HasVisitedSpawn
-	and a
-	jr z, .NoKanto
-; Kanto's map is only loaded if we've visited Indigo Plateau
-	ld a, KANTO_FLYPOINT ; first Kanto flypoint
-	ld [wStartFlypoint], a
-	ld a, NUM_FLYPOINTS - 1 ; last Kanto flypoint
-	ld [wEndFlypoint], a
-	ld [wTownMapPlayerIconLandmark], a ; last one is default (Indigo Plateau)
-; Fill out the map
-	call FillKantoMap
-	call .MapHud
-	pop af
-	call TownMapPlayerIcon
-	ret
-
-.NoKanto:
-; If Indigo Plateau hasn't been visited, we use Johto's map instead
-	ld a, JOHTO_FLYPOINT ; first Johto flypoint
-	ld [wTownMapPlayerIconLandmark], a ; first one is default (New Bark Town)
-	ld [wStartFlypoint], a
-	ld a, KANTO_FLYPOINT - 1 ; last Johto flypoint
-	ld [wEndFlypoint], a
-	call FillJohtoMap
-	pop af
 .MapHud:
 	call TownMapBubble
 	call TownMapPals
@@ -2522,21 +2430,6 @@ Pokedex_GetArea:
 	db $80 ; terminator
 
 .CheckPlayerLocation:
-; Don't show the player's sprite if you're
-; not in the same region as what's currently
-; on the screen.
-	ld a, [wTownMapPlayerIconLandmark]
-	cp LANDMARK_FAST_SHIP
-	jr z, .johto
-	cp KANTO_LANDMARK
-	jr c, .johto
-; kanto
-	ld a, [wTownMapCursorLandmark]
-	and a
-	jr z, .clear
-	jr .ok
-
-.johto
 	ld a, [wTownMapCursorLandmark]
 	and a
 	jr nz, .clear
@@ -2856,15 +2749,6 @@ EntireFlyMap: ; unreferenced
 .NotAtStartYet:
 	dec [hl]
 .FillMap:
-	ld a, [wTownMapPlayerIconLandmark]
-	cp KANTO_FLYPOINT
-	jr c, .InJohto
-	call FillKantoMap
-	xor a
-	ld b, HIGH(vBGMap1)
-	jr .Finally
-
-.InJohto:
 	call FillJohtoMap
 	ld a, SCREEN_HEIGHT_PX
 	ld b, HIGH(vBGMap0)
