@@ -904,7 +904,7 @@ Pokedex_NextOrPreviousDexEntry:
 	ld d, a
 	ld a, [wDexListingEnd]
 	ld e, a
-	call Pokedex_ListingMoveCursorUp
+	call Pokedex_ListingMoveCursorUpEntry
 	jr nc, .nope
 	call Pokedex_GetSelectedMon
 	call Pokedex_CheckSeen
@@ -916,7 +916,7 @@ Pokedex_NextOrPreviousDexEntry:
 	ld d, a
 	ld a, [wDexListingEnd]
 	ld e, a
-	call Pokedex_ListingMoveCursorDown
+	call Pokedex_ListingMoveCursorDownEntry
 	jr nc, .nope
 	call Pokedex_GetSelectedMon
 	call Pokedex_CheckSeen
@@ -1034,10 +1034,49 @@ Pokedex_ListingMoveDownOnePage:
 
 Pokedex_ListingPosStayedSame:
 	and a
+	call Pokedex_WaitBGMap
+	call Pokedex_DrawIndicators
 	ret
 
 Pokedex_ListingPosChanged:
 	scf
+	ret
+
+Pokedex_ListingMoveCursorUpEntry:
+	ld hl, wDexListingCursor
+	ld a, [hl]
+	and a
+	jr z, .try_scrolling
+	dec [hl]
+	jr Pokedex_ListingPosChanged
+.try_scrolling
+	ld hl, wDexListingScrollOffset
+	ld a, [hl]
+	and a
+	jr z, Pokedex_ListingPosStayedSameEntry
+	dec [hl]
+	jr Pokedex_ListingPosChanged
+
+Pokedex_ListingMoveCursorDownEntry:
+	ld hl, wDexListingCursor
+	ld a, [hl]
+	inc a
+	cp e
+	jr nc, Pokedex_ListingPosStayedSameEntry
+	cp d
+	jr nc, .try_scrolling
+	inc [hl]
+	jr Pokedex_ListingPosChanged
+.try_scrolling
+	ld hl, wDexListingScrollOffset
+	add [hl]
+	cp e
+	jr nc, Pokedex_ListingPosStayedSameEntry
+	inc [hl]
+	jr Pokedex_ListingPosChanged
+
+Pokedex_ListingPosStayedSameEntry:
+	and a
 	ret
 
 Pokedex_FillColumn:
@@ -2759,10 +2798,17 @@ Pokedex_DrawIndicators:
 	ret
 
 Pokedex_WaitBGMap:
-; Tell VBlank to update BG Map
-	ld a, 1 ; BG Map 0 tiles
+	call WaitBGMap
+.loop
+	ldh a, [hBGMapMode]
+	and a
+	ret z
+	ldh a, [hBGMapThird]
+	and a
+	jr z, .done
+	call DelayFrame
+	jr .loop
+.done
+	xor a
 	ldh [hBGMapMode], a
-; Wait for it to do its magic
-	ld c, 3
-	call DelayFrames
 	ret
