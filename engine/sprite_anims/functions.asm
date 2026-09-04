@@ -56,6 +56,8 @@ DoSpriteAnimFrame:
 	dw AnimSeq_FlyLeaf
 	dw AnimSeq_FlyTo
 	dw AnimSeq_GSIntroHoOhLugia
+	dw AnimSeq_MinigamePicrossCursor
+	dw AnimSeq_MinigamePicrossDust
 	assert_table_length NUM_SPRITE_ANIM_FUNCS
 
 AnimSeq_Null:
@@ -1438,4 +1440,81 @@ AnimSeqs_Sine:
 
 AnimSeqs_Cosine:
 	call Sprites_Cosine
+	ret
+
+AnimSeq_MinigamePicrossCursor:
+	ld hl, wPicrossJoyStateBuffer
+	ld a, [hl]
+	and D_UP
+	jr nz, .Up
+
+	ld a, [hl]
+	and D_DOWN
+	jr nz, .Down
+
+	ld a, [hl]
+	and D_LEFT
+	jr nz, .Left
+
+	ld a, [hl]
+	and D_RIGHT
+	jr nz, .Right
+	ret
+
+.Up
+	ld hl, SPRITEANIMSTRUCT_YCOORD
+	add hl, bc
+	ld a, [hl]
+	cp $40
+	ret z
+	sub 6
+	jr .done
+
+.Down
+	ld hl, SPRITEANIMSTRUCT_YCOORD
+	add hl, bc
+	ld a, [hl]
+	cp $9a
+	ret z
+	add 6
+	jr .done
+
+.Left
+	ld hl, SPRITEANIMSTRUCT_XCOORD
+	add hl, bc
+	ld a, [hl]
+	cp $40
+	ret z
+	sub 6
+	jr .done
+
+.Right
+	ld hl, SPRITEANIMSTRUCT_XCOORD
+	add hl, bc
+	ld a, [hl]
+	cp $9a
+	ret z
+	add 6
+	jr .done
+
+.done
+	ld [hl], a
+	ld a, 8
+	ld [wPicrossCursorMovementDelay], a
+
+	ld hl, hJoypadDown
+	ld a, [hl]
+	and ~(A_BUTTON | B_BUTTON)
+	ld [hl], a
+	ret
+
+AnimSeq_MinigamePicrossDust:
+	ld hl, wPicrossAnimateDust
+	ld a, [hl]
+	and a
+	ret z
+
+	ld [hl], $00
+	ld a, SPRITE_ANIM_FRAMESET_MINIGAME_PICROSS_GOLD_2
+	call _ReinitSpriteAnimFrame
 	ret

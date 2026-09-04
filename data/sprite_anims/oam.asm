@@ -99,6 +99,9 @@ SpriteAnimOAMData:
 	spriteanimoam $00, .OAMData_GSIntroHoOh4             ; SPRITE_ANIM_OAMSET_GS_INTRO_HO_OH_4
 	spriteanimoam $00, .OAMData_GSIntroHoOh5             ; SPRITE_ANIM_OAMSET_GS_INTRO_HO_OH_5
 	spriteanimoam $04, .OAMData_Tree                     ; SPRITE_ANIM_OAMSET_HEADBUTT_TREE_2
+	spriteanimoam $00, .OAMData_MinigamePicrossCursor
+	spriteanimoam $01, .OAMData_1x1_Palette0
+	spriteanimoam $02, .OAMData_RedWalk
 	assert_table_length NUM_SPRITE_ANIM_OAMSETS
 
 .OAMData_1x1_Palette0:
@@ -734,3 +737,7 @@ SpriteAnimOAMData:
 .OAMData_GSTitleTrail:
 	db 1
 	dbsprite -1, -1,  4,  4, $00, 1 | OBP_NUM
+
+.OAMData_MinigamePicrossCursor:
+	db 1
+	dbsprite -1, -1, 7, 7, $00, 0

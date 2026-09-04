@@ -57,6 +57,10 @@ SpriteAnimFrameData:
 	dw .Frameset_EggHatch4
 	dw .Frameset_GSIntroHoOhLugia
 	dw .Frameset_HeadbuttTree
+	dw .Frameset_MinigamePicrossCursor
+	dw .Frameset_MinigamePicrossDust
+	dw .Frameset_MinigamePicrossGold1
+	dw .Frameset_MinigamePicrossGold2
 	assert_table_length NUM_SPRITE_ANIM_FRAMESETS
 
 .Frameset_00:
@@ -388,3 +392,22 @@ ENDC
 	oamframe SPRITE_ANIM_OAMSET_TREE_1,           2
 	oamframe SPRITE_ANIM_OAMSET_HEADBUTT_TREE_2,  2, OAM_X_FLIP
 	oamrestart
+
+.Frameset_MinigamePicrossCursor:
+	oamframe SPRITE_ANIM_OAMSET_MINIGAME_PICROSS_CURSOR,  8
+	oamwait 8
+	oamrestart
+
+.Frameset_MinigamePicrossDust:
+	oamframe SPRITE_ANIM_OAMSET_MINIGAME_PICROSS_DUST_1, 1
+	oamframe SPRITE_ANIM_OAMSET_MINIGAME_PICROSS_DUST_2, 1
+	oamdelete
+
+.Frameset_MinigamePicrossGold2:
+	oamframe SPRITE_ANIM_OAMSET_RED_WALK_2, 3, OAM_X_FLIP
+	oamframe SPRITE_ANIM_OAMSET_RED_WALK_1, 3
+	oamframe SPRITE_ANIM_OAMSET_RED_WALK_2, 3, OAM_X_FLIP
+	; fallthrough
+.Frameset_MinigamePicrossGold1:
+	oamframe SPRITE_ANIM_OAMSET_RED_WALK_1, 8
+	oamend

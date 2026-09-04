@@ -198,6 +198,10 @@ include gfx/lz.mk
 
 ### Misc file-specific graphics rules
 
+# Preserve the prototype's grayscale indices and digit-table size.
+gfx/picross/%.2bpp: rgbgfx += --colors dmg
+gfx/picross/picross_numbers.2bpp: tools/gfx += --trim-whitespace
+
 gfx/pokemon/%/front.2bpp: rgbgfx += -Z 
 gfx/pokemon/%/front_gold.2bpp: rgbgfx += -Z 
 gfx/pokemon/%/front_silver.2bpp: rgbgfx += -Z 

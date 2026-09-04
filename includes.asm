@@ -66,3 +66,5 @@ INCLUDE "constants/tileset_constants.asm"
 INCLUDE "constants/trainer_constants.asm"
 INCLUDE "constants/trainer_data_constants.asm"
 INCLUDE "constants/type_constants.asm"
+
+INCLUDE "constants/picross_constants.asm"

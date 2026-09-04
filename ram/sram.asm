@@ -2,6 +2,7 @@ SECTION "Scratch", SRAM
 
 UNION
 sScratch::
+sPicrossMapBackup:: ; temporary map backup; Picross never decompresses while active
 sDecompressScratch::
 	ds $60 tiles
 

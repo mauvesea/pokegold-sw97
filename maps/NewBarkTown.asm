@@ -3,6 +3,7 @@
 	const TEALBURG_BLUE
 	const TEALBURG_TEACHER
 	const TEALBURG_SUPER_NERD
+	const TEALBURG_PICROSS
 	
 NewBarkTown_MapScripts:
 	def_scene_scripts
@@ -52,6 +53,8 @@ NewBarkTown_MapEvents:
 	object_event  6, 13, SPRITE_BLUE, SPRITEMOVEDATA_STANDING_UP, 0, 0, -1, -1, 0, OBJECTTYPE_SCRIPT, 0, ObjectEvent, EVENT_TEALBURG_BLUE
 	object_event  8, 10, SPRITE_TEACHER, SPRITEMOVEDATA_WALK_LEFT_RIGHT, 1, 0, -1, -1, 0, OBJECTTYPE_SCRIPT, 0, Tealburg_TeacherScript, -1
 	object_event 10, 17, SPRITE_SUPER_NERD, SPRITEMOVEDATA_WALK_LEFT_RIGHT, 2, 0, -1, -1, PAL_NPC_GREEN, OBJECTTYPE_SCRIPT, 0, Tealburg_SuperNerdScript, -1
+
+	object_event 10, 8, SPRITE_YOUNGSTER, SPRITEMOVEDATA_STANDING_DOWN, 0, 0, -1, -1, 0, OBJECTTYPE_SCRIPT, 0, Tealburg_PicrossScript, -1
 
 Tealburg_RivalScript:
 	applymovement PLAYER, Tealburg_RivalScript_Mov1
@@ -415,3 +418,22 @@ Tealburg_BlueCoordScript_Mov5:
 	step RIGHT
 	step UP
 	step_end		
+
+Tealburg_PicrossScript:
+	faceplayer
+	opentext
+	writetext Tealburg_PicrossText
+	callasm PicrossStageMenu
+	ifequal -1, .Cancel
+	closetext
+	callasm PlayPicrossFromOverworld
+	end
+.Cancel:
+	closetext
+	end
+
+Tealburg_PicrossText:
+	text "Pick a puzzle!"
+	para "A: fill  B: mark"
+	line "START when solved."
+	done

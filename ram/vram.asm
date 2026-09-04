@@ -1,8 +1,14 @@
 SECTION "VRAM0", VRAM
 
+UNION
 vTiles0:: ds $80 tiles
 vTiles1:: ds $80 tiles
 vTiles2:: ds $80 tiles
+NEXTU
+	ds $80 tiles
+vPicrossBackground:: ds $70 tiles
+vPicrossPlayArea:: ds $90 tiles
+ENDU
 vBGMap0:: ds BG_MAP_WIDTH * BG_MAP_HEIGHT
 vBGMap1:: ds BG_MAP_WIDTH * BG_MAP_HEIGHT
 

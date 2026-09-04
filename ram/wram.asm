@@ -2822,3 +2822,32 @@ wStackBottom::
 	ds $fc
 wStackTop::
 	ds 1
+
+; Used only inside Picross; the map blocks are backed up in SRAM scratch.
+SECTION UNION "Overworld Map", WRAM0
+wPicrossRAM::
+wPicrossCursorSpritePointer:: dw
+wPicrossCurrentGridNumber:: db
+wPicrossCurrentCellNumber:: db
+wPicrossCurrentCellType:: db
+wPicrossJoypadAction:: db
+wPicrossJoyStateBuffer:: db
+
+wPicrossCursorMovementDelay:: db
+wPicrossMarkedCells:: ds 4 * 4 * 4 * 4
+; Loading starts one byte BEFORE the named layout buffer. This reserved byte
+; is deliberate: GoThroughLayout puts each pair's AND into its second byte.
+	ds 1
+wPicrossLayoutBuffer:: ds $20
+wPicrossLayoutBuffer2:: ds $20 - 1
+wPicrossBitmap:: ds 4 * 4 * 4 * 4
+wPicrossBase2bppPointer:: dw
+wPicrossBaseGFXPointer:: dw
+wPicrossDrawingRoutineCounter:: db
+	ds 11
+wPicrossNumbersBuffer:: ds 4 * 4 * 4 * 4
+wPicrossRowGFX2bppBuffer:: ds 144
+wPicrossErrorCheck:: db
+wPicrossAnimateDust:: db
+wPicrossRAMEnd::
+	assert wPicrossRAMEnd - wPicrossRAM <= 1300
