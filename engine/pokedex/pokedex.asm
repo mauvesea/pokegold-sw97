@@ -2633,6 +2633,16 @@ Pokedex_LoadGFX:
 	ld de, vTiles2 tile $30
 	call Decompress
 
+.LoadPokedex2LZ:
+	ld hl, Pokedex2LZ
+	ld de, vTiles2 tile $00
+	call Decompress
+
+.LoadPokedexCursorLZ:
+	ld hl, PokedexCursorLZ
+	ld de, vTiles0 tile $60
+	call Decompress
+
 .LoadPokedexSlowpokeLZ:
 	ld hl, PokedexSlowpokeLZ
 	ld de, vTiles0
@@ -2651,8 +2661,14 @@ Pokedex_LoadStandardFont:
 PokedexLZ:
 INCBIN "gfx/pokedex/pokedex.2bpp.lz"
 
+Pokedex2LZ:
+INCBIN "gfx/pokedex/pokedex2.2bpp.lz"
+
 PokedexSlowpokeLZ:
 INCBIN "gfx/pokedex/slowpoke.2bpp.lz"
+
+PokedexCursorLZ:
+INCBIN "gfx/pokedex/cursor.2bpp.lz"
 
 SlowpokeClosedMouth:
 INCBIN "gfx/pokedex/slowpoke_mouth1.2bpp"
@@ -2776,6 +2792,12 @@ DexSideMenu_InputLoop:
 	and D_DOWN
 	jr nz, .down
 	ldh a, [hJoyPressed]
+	and D_LEFT
+	jr nz, .left
+	ldh a, [hJoyPressed]
+	and D_RIGHT
+	jr nz, .right
+	ldh a, [hJoyPressed]
 	and A_BUTTON
 	jr nz, .select
 	ldh a, [hJoyPressed]
@@ -2787,12 +2809,9 @@ DexSideMenu_InputLoop:
 .up
 	ld hl, wDexArrowCursorPosIndex
 	ld a, [hl]
-	and a
-	jr nz, .decrement
-	ld a, 3
-	jr .store_cursor_pos
-.decrement
-	dec a
+	cp 2
+	jr c, DexSideMenu_InputLoop
+	sub 2
 .store_cursor_pos
 	ld [hl], a
 	jr .update_cursor
@@ -2800,10 +2819,25 @@ DexSideMenu_InputLoop:
 .down
 	ld hl, wDexArrowCursorPosIndex
 	ld a, [hl]
+	cp 2
+	jr nc, DexSideMenu_InputLoop
+	add 2
+	jr .store_cursor_pos
+
+.left
+	ld hl, wDexArrowCursorPosIndex
+	bit 0, [hl]
+	jr z, DexSideMenu_InputLoop
+	ld a, [hl]
+	dec a
+	jr .store_cursor_pos
+
+.right
+	ld hl, wDexArrowCursorPosIndex
+	bit 0, [hl]
+	jr nz, DexSideMenu_InputLoop
+	ld a, [hl]
 	inc a
-	cp 4
-	jr c, .store_cursor_pos
-	xor a
 	jr .store_cursor_pos
 
 .update_cursor
@@ -2830,29 +2864,25 @@ DexSideMenu_InputLoop:
 Pokedex_DrawGraphicDexSideMenu:
 	; DATA, AREA, CRY, and BACK graphics, already loaded by Pokedex_LoadGFX.
 	ld hl, Pokedex_GraphicDexSideMenuTiles
-	ld de, wTilemap + 1 * SCREEN_WIDTH + 14
-	ld b, 4
+	ld de, wTilemap + 2 * SCREEN_WIDTH + 13
+	call .copy_two_rows
+	ld de, wTilemap + 4 * SCREEN_WIDTH + 13
+.copy_two_rows
+	ld b, 2
 .row
+	ld c, 6
+.column
 	ld a, [hli]
 	ld [de], a
 	inc de
-	ld a, [hli]
-	ld [de], a
-	inc de
-	ld a, [hli]
-	ld [de], a
+	dec c
+	jr nz, .column
 	ld a, e
-	add SCREEN_WIDTH - 2
+	add SCREEN_WIDTH - 6
 	ld e, a
 	jr nc, .next_row
 	inc d
 .next_row
-	ld a, e
-	add SCREEN_WIDTH
-	ld e, a
-	jr nc, .continue
-	inc d
-.continue
 	dec b
 	jr nz, .row
 	ret
@@ -2866,28 +2896,36 @@ Pokedex_ClearGraphicDexSideMenuBackground:
 	ret
 
 Pokedex_GraphicDexSideMenuTiles:
-	db $47, $48, $49 ; DATA at (0e, 01)
-	db $4a, $4b, $4c ; AREA at (0e, 03)
-	db $59, $5a, $5b ; CRY  at (0e, 05)
-	db $3b, $3c, $3e ; BACK at (0e, 07)
+	db $00, $01, $02, $03, $04, $05 ; DATA, AREA (top halves)
+	db $0c, $0d, $0e, $0f, $10, $11 ; DATA, AREA (bottom halves)
+	db $18, $19, $1a, $1b, $1c, $1d ; CRY, BACK (top halves)
+	db $24, $25, $26, $27, $28, $29 ; CRY, BACK (bottom halves)
 
 Pokedex_DrawGraphicDexSideMenuCursorOAM:
-	; OBJ tiles come from vTiles0, the first VRAM tile area.  Start the square
-	; at screen tile (12, 1), immediately left of the menu's 3-tile graphics.
+	; Place the 2x2 hand cursor over the right edge of the selected button.
+	; Its tiles live in vTiles0, where OBJ tile IDs $60-$63 address them.
 	ld a, [wDexArrowCursorPosIndex]
-rept 4
-	add a
-endr
-	ld c, a
+	ld b, 0
+	bit 1, a
+	jr z, .top_row
+	ld b, 2 * TILE_WIDTH
+.top_row
+	ld c, 0
+	bit 0, a
+	jr z, .left_column
+	ld c, 3 * TILE_WIDTH
+.left_column
 	ld hl, .CursorOAM
 	ld de, wShadowOAMSprite00
-	ld b, 4
+	ld a, 4
 .loop
+	push af
 	ld a, [hli] ; y
-	add c
+	add b
 	ld [de], a
 	inc de
 	ld a, [hli] ; x
+	add c
 	ld [de], a
 	inc de
 	ld a, [hli] ; tile
@@ -2896,16 +2934,17 @@ endr
 	ld a, [hli] ; attributes
 	ld [de], a
 	inc de
-	dec b
+	pop af
+	dec a
 	jr nz, .loop
 	ret
 
 .CursorOAM:
 	; x tile, y tile, x pixel, y pixel, vtile offset, attributes
-	dbsprite 13, 3, 0, 0, $00, 7
-	dbsprite 14, 3, 0, 0, $01, 7
-	dbsprite 13, 4, 0, 0, $10, 7
-	dbsprite 14, 4, 0, 0, $11, 7
+	dbsprite 16, 4, 0, 0, $60, 7
+	dbsprite 17, 4, 0, 0, $61, 7
+	dbsprite 16, 5, 0, 0, $62, 7
+	dbsprite 17, 5, 0, 0, $63, 7
 
 DexOptionsMenu:
 	ld hl, DexOptionsMenuHeader
@@ -3032,10 +3071,18 @@ Pokedex_RestoreGraphicSideMenuTilemap:
 	jp CloseSRAM
 
 Pokedex_ReopenGraphicSideMenuFromScreen:
-	; DATA and AREA replace the entire screen, so rebuild the list offscreen,
-	; save that clean layout, and only then place the side menu over it.
+	; DATA and AREA replace the entire screen.  Clear their contents without
+	; disturbing the outer border, restore the list palette and overwritten menu
+	; graphics, then rebuild the list before placing the side menu over it.
 	call Pokedex_ResetBGMapMode
 	call ClearSprites
+	hlcoord 1, 1
+	lb bc, 16, 18
+	call ClearBox
+	call Pokedex_WaitBGMap
+	ld a, SCGB_POKEDEX_LIST
+	call Pokedex_GetSGBLayout
+	call Pokedex_ReloadGraphicSideMenuGFX
 	xor a
 	hlcoord 0, 0, wAttrmap
 	ld bc, SCREEN_HEIGHT * SCREEN_WIDTH
@@ -3052,9 +3099,19 @@ Pokedex_ReopenGraphicSideMenuFromScreen:
 	call Pokedex_DrawGraphicDexSideMenu
 	call Pokedex_DrawGraphicDexSideMenuCursorOAM
 	call Pokedex_WaitBGMap
-	ld a, SCGB_POKEDEX_LIST
-	call Pokedex_GetSGBLayout
 	jp DexSideMenu_InputLoop
+
+Pokedex_ReloadGraphicSideMenuGFX:
+	; Entry and area screens reuse these VRAM ranges.  Stream both menu assets
+	; back through VBlank before displaying the graphical side menu again.
+	ld hl, Pokedex2LZ
+	ld de, vTiles2 tile $00
+	lb bc, BANK(Pokedex2LZ), 12 * 4
+	call DecompressRequest2bpp
+	ld hl, PokedexCursorLZ
+	ld de, vTiles0 tile $60
+	lb bc, BANK(PokedexCursorLZ), 2 * 2
+	jp DecompressRequest2bpp
 
 PokedexOptionMenuNum:
 	ld a, DEXMODE_OLD
