@@ -93,7 +93,7 @@ PokeGear:
 	ld [wJumptableIndex], a ; POKEGEARSTATE_CLOCKINIT
 	ld [wPokegearCard], a ; POKEGEARCARD_CLOCK
 	ld [wPokegearMapRegion], a ; JOHTO_REGION
-	ld [wUnusedPokegearByte], a
+	ld [wPokegearLastWeekday], a
 	ld [wPokegearPhoneScrollPosition], a
 	ld [wPokegearPhoneCursorPosition], a
 	ld [wPokegearPhoneSelectedPerson], a
@@ -477,6 +477,16 @@ UpdateClockPokegear:
 	xor a
 	ldh [hBGMapMode], a
 	call Pokegear_UpdateClock
+	ld a, [wPokegearCard]
+	and a ; POKEGEARCARD_CLOCK
+	jr nz, .done
+	call GetWeekday
+	ld b, a
+	ld a, [wPokegearLastWeekday]
+	cp b
+	jr z, .done
+	call Pokegear_UpdateWeekday
+.done
 	ld a, $1
 	ldh [hBGMapMode], a
 	ret
@@ -501,6 +511,8 @@ Pokegear_UpdateClock:
 	ret
 
 Pokegear_UpdateWeekday:
+	call GetWeekday
+	ld [wPokegearLastWeekday], a
 	hlcoord 4, 5
 	lb bc, 1, 14
 	call ClearBox

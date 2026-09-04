@@ -1139,7 +1139,7 @@ NEXTU
 ; pokegear
 wPokegearCard:: db
 wPokegearMapRegion:: db
-wUnusedPokegearByte:: db
+wPokegearLastWeekday:: db
 
 NEXTU
 ; pack
