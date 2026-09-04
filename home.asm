@@ -3,6 +3,10 @@ NULL::
 
 INCLUDE "home/header.asm"
 
+SECTION "Toolgear Clock VBlank", ROM0[$0063]
+
+INCLUDE "home/toolgear_clock.asm"
+
 SECTION "Home", ROM0
 
 INCLUDE "home/vblank.asm"
@@ -57,3 +61,7 @@ INCLUDE "home/print_bcd.asm"
 INCLUDE "home/battle.asm"
 INCLUDE "home/sprite_anims.asm"
 INCLUDE "home/audio.asm"
+
+SECTION "Toolgear Clock", ROMX
+
+INCLUDE "engine/overworld/toolgear_clock.asm"

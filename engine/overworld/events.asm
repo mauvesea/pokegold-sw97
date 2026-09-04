@@ -149,6 +149,7 @@ HandleMap:
 	call HandleMapObjects
 	call NextOverworldFrame
 	call HandleMapBackground
+	farcall UpdateToolgearClock
 	call CheckPlayerState
 	ret
 

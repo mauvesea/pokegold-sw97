@@ -1929,7 +1929,10 @@ wTilesetBlocksAddress:: dw
 wTilesetCollisionBank:: db
 wTilesetCollisionAddress:: dw
 wTilesetAnim:: dw ; bank 3f
-	ds 2 ; unused
+; These two bytes were unused. The Toolgear clock only needs state here; its
+; temporary tilemap is wBGMapBuffer while that buffer is otherwise idle.
+wToolgearClockFlags:: db
+wToolgearClockLastSecond:: db
 wTilesetPalettes:: dw ; bank 3f
 wTilesetEnd::
 	assert wTilesetEnd - wTileset == TILESET_LENGTH

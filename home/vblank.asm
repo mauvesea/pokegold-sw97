@@ -89,6 +89,7 @@ VBlank0::
 	ldh [rWY], a
 	ldh a, [hWX]
 	ldh [rWX], a
+	call EnableToolgearClockSprites
 
 	; There's only time to call one of these in one vblank.
 	; Calls are in order of priority.
@@ -98,6 +99,7 @@ VBlank0::
 	call UpdatePalsIfCGB
 	jr c, .done
 	call UpdateBGMap
+	call TransferToolgearClock
 
 	; These have their own timing checks.
 

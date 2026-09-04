@@ -41,9 +41,11 @@ CloseText::
 	ld hl, wEnteredMapFromContinue
 	res 7, [hl]
 	call ResetBGWindow
+	farcall ToolgearClockTextboxClosed
 	ret
 
 OpenText::
+	farcall ToolgearClockTextboxOpened
 	call ClearWindowData
 	ldh a, [hROMBank]
 	push af

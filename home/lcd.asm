@@ -2,6 +2,17 @@
 
 LCD::
 	push af
+	ld a, [wToolgearClockFlags]
+	bit TOOLGEAR_CLOCK_VISIBLE_F, a
+	jr z, .scroll
+	ldh a, [rLY]
+	cp TOOLGEAR_CLOCK_WINDOW_Y - 1
+	jr nz, .scroll
+	ldh a, [rLCDC]
+	res rLCDC_SPRITES_ENABLE, a
+	ldh [rLCDC], a
+
+.scroll
 	ldh a, [hLCDCPointer]
 	and a
 	jr z, .done
