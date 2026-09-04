@@ -19,6 +19,7 @@ EXPORT POKEDEX_SCX
 	const DEXSTATE_UPDATE_SEARCH_RESULTS_SCR
 	const DEXSTATE_UNOWN_MODE
 	const DEXSTATE_UPDATE_UNOWN_MODE
+	const DEXSTATE_REOPEN_SIDE_MENU
 	const DEXSTATE_EXIT
 
 Pokedex:
@@ -193,6 +194,7 @@ Pokedex_RunJumptable:
 	dw Pokedex_UpdateSearchResultsScreen
 	dw Pokedex_InitUnownMode
 	dw Pokedex_UpdateUnownMode
+	dw Pokedex_ReopenGraphicSideMenuFromScreen
 	dw Pokedex_Exit
 
 Pokedex_IncrementDexPointer:
@@ -215,6 +217,8 @@ Pokedex_InitMainScreen:
 	ld bc, SCREEN_HEIGHT * SCREEN_WIDTH
 	call ByteFill
 	call Pokedex_DrawMainScreenBG
+	xor a
+	ld [wUnusedPokedexByte], a
 	farcall DrawPokedexListWindow	
 	ld a, 7
 	ld [wDexListingHeight], a
@@ -242,6 +246,7 @@ Pokedex_UpdateMainScreen:
 	jr nz, .select
 	call Pokedex_UpdateCursorOAM
 	ld b, 0
+	ld e, 0
 	call Pokedex_MainListingHandleDPadInput
 	jr nc, .no_list_move
 	set 0, b
@@ -261,7 +266,7 @@ Pokedex_UpdateMainScreen:
 .indicators_only
 	bit 1, b
 	ret z
-	call Pokedex_CommitMainListingTilemap
+	; The indicator tiles have already been queued for the next VBlank.
 	ret
 
 .a
@@ -318,6 +323,7 @@ Pokedex_MainListingHandleDPadInput:
 	and a
 	ret z
 	dec [hl]
+	ld e, D_UP
 	scf
 	ret
 
@@ -343,6 +349,7 @@ Pokedex_MainListingHandleDPadInput:
 .scroll_down
 	ld hl, wDexListingScrollOffset
 	inc [hl]
+	ld e, D_DOWN
 	scf
 	ret
 
@@ -358,6 +365,7 @@ Pokedex_MainListingHandleDPadInput:
 	jr z, .subtract_page
 	xor a
 	ld [hl], a
+	ld e, D_LEFT
 	scf
 	ret
 .subtract_page
@@ -368,6 +376,7 @@ Pokedex_MainListingHandleDPadInput:
 	ld a, c
 	sub d
 	ld [hl], a
+	ld e, D_LEFT
 	scf
 	ret
 
@@ -393,15 +402,14 @@ Pokedex_MainListingHandleDPadInput:
 	ld a, c
 .store_page_down
 	ld [hl], a
+	ld e, D_RIGHT
 	scf
 	ret
 
 Pokedex_UpdateMainListingIndicators:
-; The side buttons are rendered from the current physical D-pad state.  This
-; makes them remain pressed while held without blocking list redraws.
-	ldh a, [hJoyDown]
-	and D_PAD
-	ld c, a
+	; e is nonzero only when navigation actually scrolls the visible list.
+	; Ordinary cursor movement and merely holding a direction do not flash.
+	ld c, e
 	ld a, [wUnusedPokedexByte]
 	cp c
 	ret z
@@ -420,7 +428,75 @@ Pokedex_UpdateMainListingIndicators:
 	ld a, c
 	and D_RIGHT
 	call nz, Pokedex_DrawIndicatorRightPressed
+	push bc
+	call Pokedex_QueueMainListingIndicators
+	pop bc
 	scf
+	ret
+
+Pokedex_QueueMainListingIndicators:
+	; Queue only the 6x6 indicator region for the next VBlank.
+	hlcoord 13, 2
+	ld de, wBGMapBuffer
+	call .copy_box
+	hlcoord 13, 2, wAttrmap
+	ld de, wBGMapPalBuffer
+	call .copy_box
+
+	ldh a, [hBGMapAddress]
+	ld c, a
+	ldh a, [hBGMapAddress + 1]
+	ld b, a
+	ld hl, 2 * BG_MAP_WIDTH + 13
+	add hl, bc
+	ld d, h
+	ld e, l
+	ld hl, wBGMapBufferPointers
+	ld b, 6
+.pointer_row
+	ld c, 3
+.pointer
+	ld [hl], e
+	inc hl
+	ld [hl], d
+	inc hl
+	inc de
+	inc de
+	dec c
+	jr nz, .pointer
+	ld a, e
+	add BG_MAP_WIDTH - 6
+	ld e, a
+	jr nc, .next_pointer_row
+	inc d
+.next_pointer_row
+	dec b
+	jr nz, .pointer_row
+
+	ld a, 18
+	ldh [hBGMapTileCount], a
+	ld a, 1
+	ldh [hBGMapUpdate], a
+	ret
+
+.copy_box
+	ld b, 6
+.row
+	ld c, 6
+.tile
+	ld a, [hli]
+	ld [de], a
+	inc de
+	dec c
+	jr nz, .tile
+	ld a, l
+	add SCREEN_WIDTH - 6
+	ld l, a
+	jr nc, .next_row
+	inc h
+.next_row
+	dec b
+	jr nz, .row
 	ret
 
 Pokedex_CommitMainListingTilemap:
@@ -488,6 +564,9 @@ Pokedex_UpdateDexEntryScreen:
 
 .max_volume
 	call MaxVolume
+	ld a, [wPrevDexEntryJumptableIndex]
+	cp DEXSTATE_REOPEN_SIDE_MENU
+	jr z, .return_to_side_menu
 	hlcoord 1, 1
 	lb bc, 7, 7
 	call ClearBox
@@ -497,6 +576,10 @@ Pokedex_UpdateDexEntryScreen:
 	ld c, 20
 	call DelayFrames
 	ld a, [wPrevDexEntryJumptableIndex]
+	ld [wJumptableIndex], a
+	ret
+
+.return_to_side_menu
 	ld [wJumptableIndex], a
 	ret
 
@@ -522,6 +605,9 @@ Pokedex_Page:
 
 .max_volume
 	call MaxVolume
+	ld a, [wPrevDexEntryJumptableIndex]
+	cp DEXSTATE_REOPEN_SIDE_MENU
+	jr z, .return_to_side_menu
 	hlcoord 1, 1
 	lb bc, 7, 7
 	call ClearBox
@@ -532,6 +618,10 @@ Pokedex_Page:
 	call DelayFrames
 	ld a, [wPrevDexEntryJumptableIndex]
 	ld [wJumptableIndex], a	
+	ret
+
+.return_to_side_menu
+	ld [wJumptableIndex], a
 	ret
 
 Pokedex_ReinitDexEntryScreen:
@@ -1063,7 +1153,7 @@ Pokedex_NextOrPreviousDexEntry:
 	ld d, a
 	ld a, [wDexListingEnd]
 	ld e, a
-	call Pokedex_ListingMoveCursorUp
+	call Pokedex_ListingMoveCursorUpNoIndicator
 	jr nc, .nope
 	call Pokedex_GetSelectedMon
 	call Pokedex_CheckSeen
@@ -1075,7 +1165,7 @@ Pokedex_NextOrPreviousDexEntry:
 	ld d, a
 	ld a, [wDexListingEnd]
 	ld e, a
-	call Pokedex_ListingMoveCursorDown
+	call Pokedex_ListingMoveCursorDownNoIndicator
 	jr nc, .nope
 	call Pokedex_GetSelectedMon
 	call Pokedex_CheckSeen
@@ -1120,6 +1210,7 @@ Pokedex_ListingHandleDPadInput:
 
 Pokedex_ListingMoveCursorUp:
 	call Pokedex_DrawIndicatorUp
+Pokedex_ListingMoveCursorUpNoIndicator:
 	ld hl, wDexListingCursor
 	ld a, [hl]
 	and a
@@ -1136,6 +1227,7 @@ Pokedex_ListingMoveCursorUp:
 
 Pokedex_ListingMoveCursorDown:
 	call Pokedex_DrawIndicatorDown
+Pokedex_ListingMoveCursorDownNoIndicator:
 	ld hl, wDexListingCursor
 	ld a, [hl]
 	inc a
@@ -2660,15 +2752,19 @@ DexSideMenu:
 	; The action menu is a tile graphic, not a regular text menu.  Keep its
 	; selection separate from wMenuCursorY, which belongs to the standard menu
 	; system used by the Select options menu.
+	call Pokedex_ResetBGMapMode
+	call Pokedex_SaveGraphicSideMenuTilemap
 	xor a
 	ld [wDexArrowCursorPosIndex], a
+
+DexSideMenu_Reopen:
 	call ClearSprites
 	call Pokedex_ClearGraphicDexSideMenuBackground
 	call Pokedex_DrawGraphicDexSideMenu
 	call Pokedex_DrawGraphicDexSideMenuCursorOAM
 	call Pokedex_WaitBGMap
 
-.input_loop
+DexSideMenu_InputLoop:
 	; DexSideMenu is entered from the main screen's A-button handler.  Polling
 	; once before accepting input consumes that press, so it cannot immediately
 	; select DATA in the new menu.
@@ -2686,7 +2782,7 @@ DexSideMenu:
 	and B_BUTTON
 	jr nz, .cancel
 	call DelayFrame
-	jr .input_loop
+	jr DexSideMenu_InputLoop
 
 .up
 	ld hl, wDexArrowCursorPosIndex
@@ -2714,7 +2810,7 @@ DexSideMenu:
 	call Pokedex_DrawGraphicDexSideMenuCursorOAM
 	call Pokedex_WaitBGMap
 	call MenuClickSound
-	jr .input_loop
+	jr DexSideMenu_InputLoop
 
 .select
 	ld a, [wDexArrowCursorPosIndex]
@@ -2723,13 +2819,13 @@ DexSideMenu:
 	jp hl
 
 .cancel
-	jp PokedexSideMenuQuit
+	jp PokedexGraphicSideMenuQuit
 
 .ActionJumptable:
 	dw PokedexSideMenuData
 	dw PokedexSideMenuArea
 	dw PokedexSideMenuCry
-	dw PokedexSideMenuQuit
+	dw PokedexGraphicSideMenuQuit
 
 Pokedex_DrawGraphicDexSideMenu:
 	; DATA, AREA, CRY, and BACK graphics, already loaded by Pokedex_LoadGFX.
@@ -2845,7 +2941,9 @@ DexOptionsMenuHeader:
 
 
 PokedexSideMenuData:
-	ld a, 2
+	ld a, DEXSTATE_REOPEN_SIDE_MENU
+	ld [wPrevDexEntryJumptableIndex], a
+	ld a, DEXSTATE_DEX_ENTRY_SCR
 	ld [wJumptableIndex], a
 	ret
 
@@ -2854,7 +2952,8 @@ PokedexSideMenuCry:
 	ld [wCurPartySpecies], a
 	ld a, [wCurPartySpecies]
 	call PlayMonCry
-	jp DexSideMenu
+	; Keep CRY selected when the menu resumes.
+	jp DexSideMenu_Reopen
 	
 PokedexSideMenuArea:
 	hlcoord 1, 1
@@ -2887,17 +2986,9 @@ PokedexSideMenuArea:
 
 .max_volume
 	call MaxVolume
-	hlcoord 1, 1
-	lb bc, 7, 7
-	call ClearBox
-	call WaitBGMap
-	ld a, SCGB_POKEDEX_LIST
-	call Pokedex_GetSGBLayout		
-	ld c, 20
-	call DelayFrames
-	ld a, 0
-	ld [wJumptableIndex], a
-	ret
+	ld a, 1
+	ld [wDexArrowCursorPosIndex], a
+	jp Pokedex_ReopenGraphicSideMenuFromScreen
 
 PokedexSideMenuQuit:
 	call WaitBGMap
@@ -2907,6 +2998,63 @@ PokedexSideMenuQuit:
 	ld a, 0
 	ld [wJumptableIndex], a
 	ret
+
+PokedexGraphicSideMenuQuit:
+	; Restore the exact main-screen layout saved before opening the graphic
+	; menu.  This avoids exposing a partially rebuilt sidebar or list.
+	call Pokedex_ResetBGMapMode
+	call Pokedex_RestoreGraphicSideMenuTilemap
+	call ClearSprites
+	call Pokedex_UpdateCursorOAM
+	call Pokedex_CommitMainListingTilemap
+	ld a, DEXSTATE_UPDATE_MAIN_SCR
+	ld [wJumptableIndex], a
+	ret
+
+Pokedex_SaveGraphicSideMenuTilemap:
+	; wTempTilemap overlaps the Pokédex list data in WRAM, so use the dedicated
+	; SRAM scratch area for this full-screen snapshot instead.
+	ld a, BANK(sScratch)
+	call OpenSRAM
+	hlcoord 0, 0
+	ld de, sScratch
+	ld bc, SCREEN_WIDTH * SCREEN_HEIGHT
+	call CopyBytes
+	jp CloseSRAM
+
+Pokedex_RestoreGraphicSideMenuTilemap:
+	ld a, BANK(sScratch)
+	call OpenSRAM
+	ld hl, sScratch
+	decoord 0, 0
+	ld bc, SCREEN_WIDTH * SCREEN_HEIGHT
+	call CopyBytes
+	jp CloseSRAM
+
+Pokedex_ReopenGraphicSideMenuFromScreen:
+	; DATA and AREA replace the entire screen, so rebuild the list offscreen,
+	; save that clean layout, and only then place the side menu over it.
+	call Pokedex_ResetBGMapMode
+	call ClearSprites
+	xor a
+	hlcoord 0, 0, wAttrmap
+	ld bc, SCREEN_HEIGHT * SCREEN_WIDTH
+	call ByteFill
+	call Pokedex_DrawMainScreenBG
+	xor a
+	ld [wUnusedPokedexByte], a
+	farcall DrawPokedexListWindow
+	ld a, 7
+	ld [wDexListingHeight], a
+	call Pokedex_PrintListing
+	call Pokedex_SaveGraphicSideMenuTilemap
+	call Pokedex_ClearGraphicDexSideMenuBackground
+	call Pokedex_DrawGraphicDexSideMenu
+	call Pokedex_DrawGraphicDexSideMenuCursorOAM
+	call Pokedex_WaitBGMap
+	ld a, SCGB_POKEDEX_LIST
+	call Pokedex_GetSGBLayout
+	jp DexSideMenu_InputLoop
 
 PokedexOptionMenuNum:
 	ld a, DEXMODE_OLD
