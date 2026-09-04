@@ -2777,9 +2777,7 @@ Pokedex_ResetBGMapMode:
 	ret
 
 DexSideMenu:
-	; The action menu is a tile graphic, not a regular text menu.  Keep its
-	; selection separate from wMenuCursorY, which belongs to the standard menu
-	; system used by the Select options menu.
+	; Both side menus are tile graphics and share this matrix cursor state.
 	call Pokedex_ResetBGMapMode
 	call Pokedex_SaveGraphicSideMenuTilemap
 	xor a
@@ -2793,9 +2791,24 @@ DexSideMenu_Reopen:
 	call Pokedex_WaitBGMap
 
 DexSideMenu_InputLoop:
-	; DexSideMenu is entered from the main screen's A-button handler.  Polling
-	; once before accepting input consumes that press, so it cannot immediately
-	; select DATA in the new menu.
+	call Pokedex_GraphicSideMenuInputLoop
+	jr c, .cancel
+	ld hl, .ActionJumptable
+	call Pokedex_LoadPointer
+	jp hl
+
+.cancel
+	jp PokedexGraphicSideMenuQuit
+
+.ActionJumptable:
+	dw PokedexSideMenuData
+	dw PokedexSideMenuArea
+	dw PokedexSideMenuCry
+	dw PokedexGraphicSideMenuQuit
+
+Pokedex_GraphicSideMenuInputLoop:
+	; Polling once before accepting input consumes the button that opened either
+	; graphical menu, so it cannot immediately choose the first option.
 	call JoyTextDelay
 	ldh a, [hJoyPressed]
 	and D_UP
@@ -2816,13 +2829,13 @@ DexSideMenu_InputLoop:
 	and B_BUTTON
 	jr nz, .cancel
 	call DelayFrame
-	jr DexSideMenu_InputLoop
+	jr Pokedex_GraphicSideMenuInputLoop
 
 .up
 	ld hl, wDexArrowCursorPosIndex
 	ld a, [hl]
 	cp 2
-	jr c, DexSideMenu_InputLoop
+	jr c, Pokedex_GraphicSideMenuInputLoop
 	sub 2
 .store_cursor_pos
 	ld [hl], a
@@ -2832,14 +2845,14 @@ DexSideMenu_InputLoop:
 	ld hl, wDexArrowCursorPosIndex
 	ld a, [hl]
 	cp 2
-	jr nc, DexSideMenu_InputLoop
+	jr nc, Pokedex_GraphicSideMenuInputLoop
 	add 2
 	jr .store_cursor_pos
 
 .left
 	ld hl, wDexArrowCursorPosIndex
 	bit 0, [hl]
-	jr z, DexSideMenu_InputLoop
+	jr z, Pokedex_GraphicSideMenuInputLoop
 	ld a, [hl]
 	dec a
 	jr .store_cursor_pos
@@ -2847,7 +2860,7 @@ DexSideMenu_InputLoop:
 .right
 	ld hl, wDexArrowCursorPosIndex
 	bit 0, [hl]
-	jr nz, DexSideMenu_InputLoop
+	jr nz, Pokedex_GraphicSideMenuInputLoop
 	ld a, [hl]
 	inc a
 	jr .store_cursor_pos
@@ -2856,26 +2869,26 @@ DexSideMenu_InputLoop:
 	call Pokedex_DrawGraphicDexSideMenuCursorOAM
 	call Pokedex_WaitBGMap
 	call MenuClickSound
-	jr DexSideMenu_InputLoop
+	jr Pokedex_GraphicSideMenuInputLoop
 
 .select
 	ld a, [wDexArrowCursorPosIndex]
-	ld hl, .ActionJumptable
-	call Pokedex_LoadPointer
-	jp hl
+	and a
+	ret
 
 .cancel
-	jp PokedexGraphicSideMenuQuit
-
-.ActionJumptable:
-	dw PokedexSideMenuData
-	dw PokedexSideMenuArea
-	dw PokedexSideMenuCry
-	dw PokedexGraphicSideMenuQuit
+	scf
+	ret
 
 Pokedex_DrawGraphicDexSideMenu:
-	; DATA, AREA, CRY, and BACK graphics, already loaded by Pokedex_LoadGFX.
 	ld hl, Pokedex_GraphicDexSideMenuTiles
+	jr Pokedex_DrawGraphicSideMenu
+
+Pokedex_DrawGraphicOptionsMenu:
+	ld hl, Pokedex_GraphicOptionsMenuTiles
+
+Pokedex_DrawGraphicSideMenu:
+	; Draw either 2x2 menu from the shared 6-by-4 tile layout.
 	ld de, wTilemap + 2 * SCREEN_WIDTH + 13
 	call .copy_two_rows
 	ld de, wTilemap + 4 * SCREEN_WIDTH + 13
@@ -2912,6 +2925,12 @@ Pokedex_GraphicDexSideMenuTiles:
 	db $0c, $0d, $0e, $0f, $10, $11 ; DATA, AREA (bottom halves)
 	db $18, $19, $1a, $1b, $1c, $1d ; CRY, BACK (top halves)
 	db $24, $25, $26, $27, $28, $29 ; CRY, BACK (bottom halves)
+
+Pokedex_GraphicOptionsMenuTiles:
+	db $06, $07, $08, $09, $0a, $0b ; NUM, A-Z (top halves)
+	db $12, $13, $14, $15, $16, $17 ; NUM, A-Z (bottom halves)
+	db $1e, $1f, $20, $1b, $1c, $1d ; FIND, BACK (top halves)
+	db $2a, $2b, $2c, $27, $28, $29 ; FIND, BACK (bottom halves)
 
 Pokedex_DrawGraphicDexSideMenuCursorOAM:
 	; Place the 2x2 hand cursor over the right edge of the selected button.
@@ -2953,42 +2972,35 @@ Pokedex_DrawGraphicDexSideMenuCursorOAM:
 
 .CursorOAM:
 	; x tile, y tile, x pixel, y pixel, vtile offset, attributes
-	dbsprite 16, 4, 0, 0, $60, 7
-	dbsprite 17, 4, 0, 0, $61, 7
-	dbsprite 16, 5, 0, 0, $62, 7
-	dbsprite 17, 5, 0, 0, $63, 7
+	dbsprite 16, 3, 4, 4, $60, 7
+	dbsprite 17, 3, 4, 4, $61, 7
+	dbsprite 16, 4, 4, 4, $62, 7
+	dbsprite 17, 4, 4, 4, $63, 7
 
 DexOptionsMenu:
-	ld hl, DexOptionsMenuHeader
-	call CopyMenuHeader
-	ld a, [wMenuCursorY]
-	call StoreMenuCursorPosition
-	call VerticalDexMenu
-	jp c, PokedexSideMenuQuit
-	ld a, [wMenuCursorY]
-	cp 1
-	jp z, PokedexOptionMenuNum
-	cp 2
-	jp z, PokedexOptionMenuAlpha
-	cp 3
-	jp z, PokedexSideMenuQuit ; PokedexOptionMenuFind
-	cp 4
-	jp z, PokedexSideMenuQuit
-	ret
+	call Pokedex_ResetBGMapMode
+	call Pokedex_SaveGraphicSideMenuTilemap
+	xor a
+	ld [wDexArrowCursorPosIndex], a
+	call ClearSprites
+	call Pokedex_ClearGraphicDexSideMenuBackground
+	call Pokedex_DrawGraphicOptionsMenu
+	call Pokedex_DrawGraphicDexSideMenuCursorOAM
+	call Pokedex_WaitBGMap
+	call Pokedex_GraphicSideMenuInputLoop
+	jr c, .cancel
+	ld hl, .ActionJumptable
+	call Pokedex_LoadPointer
+	jp hl
 
-DexOptionsMenuHeader:
-	db MENU_BACKUP_TILES ; flags
-	menu_coords 13, 0, SCREEN_WIDTH - 1, TEXTBOX_Y - 3
-	dw .SideMenuData
-	db 1 ; default option
+.cancel
+	jp PokedexGraphicSideMenuQuit
 
-.SideMenuData:
-	db STATICMENU_WRAP | STATICMENU_CURSOR | STATICMENU_NO_TOP_SPACING ; flags
-	db 4 ; items
-	db "NUM@" ; DATA
-	db "A-Z@" ; AREA
-	db "FIND@" ; CRY
-	db "BACK@" ; BACK
+.ActionJumptable:
+	dw PokedexOptionMenuNum
+	dw PokedexOptionMenuAlpha
+	dw PokedexGraphicSideMenuQuit ; FIND is not implemented yet.
+	dw PokedexGraphicSideMenuQuit
 
 
 PokedexSideMenuData:
@@ -3148,34 +3160,6 @@ PokedexOptionMenuAlpha:
 	ld a, 0
 	ld [wJumptableIndex], a
 	ret	
-	
-VerticalDexMenu:
-	xor a
-	ldh [hBGMapMode], a
-
-	hlcoord 13, 0
-	lb bc, 7, 5
-	call Pokedex_PlaceBorder		
-	
-	call UpdateSprites
-	call PlaceVerticalMenuItems
-	call ApplyTilemap
-	call CopyMenuData
-	ld a, [wMenuDataFlags]
-	bit 7, a
-	jr z, .cancel
-	call InitVerticalMenuCursor
-	call StaticMenuJoypad
-	call MenuClickSound
-	bit 1, a
-	jr z, .okay
-.cancel
-	scf
-	ret
-
-.okay
-	and a
-	ret
 
 Pokedex_DrawIndicatorUp:
 	call Pokedex_DrawIndicatorUpPressed
