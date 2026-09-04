@@ -109,6 +109,12 @@ PlayersHousePCScript:
 	end
 	
 PlayersHouseRadioScript:
+	setflag ENGINE_POKEDEX
+	opentext
+	givepoke CHIKORITA, 5
+	givepoke PIKACHU, 5
+	closetext
+	end
 	checkevent EVENT_LISTENED_TO_INITIAL_RADIO
 	iftrue .NormalRadio
 	opentext

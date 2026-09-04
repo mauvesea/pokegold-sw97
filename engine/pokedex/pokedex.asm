@@ -241,11 +241,27 @@ Pokedex_UpdateMainScreen:
 	and SELECT
 	jr nz, .select
 	call Pokedex_UpdateCursorOAM
-	call Pokedex_ListingHandleDPadInput
-	ret nc
-	call Pokedex_PrintListing
-	call Pokedex_SetBGMapMode3
+	ld b, 0
+	call Pokedex_MainListingHandleDPadInput
+	jr nc, .no_list_move
+	set 0, b
+.no_list_move
+	call Pokedex_UpdateMainListingIndicators
+	jr nc, .no_indicator_change
+	set 1, b
+.no_indicator_change
+	bit 0, b
+	jr z, .indicators_only
+	; Never allow VBlank to read wTilemap while the list is in its temporary
+	; cleared state.  Finish constructing it first, then enable the transfer.
 	call Pokedex_ResetBGMapMode
+	call Pokedex_PrintListing
+	call Pokedex_CommitMainListingTilemap
+	ret
+.indicators_only
+	bit 1, b
+	ret z
+	call Pokedex_CommitMainListingTilemap
 	ret
 
 .a
@@ -269,6 +285,149 @@ Pokedex_UpdateMainScreen:
 	ld a, DEXSTATE_EXIT
 	ld [wJumptableIndex], a
 	ret
+
+Pokedex_MainListingHandleDPadInput:
+; Main Pokédex list navigation.  This does not draw or wait; drawing is done
+; once after the final cursor/scroll position has been calculated.
+	ldh a, [hJoyLast]
+	and D_UP
+	jr nz, .up
+	ldh a, [hJoyLast]
+	and D_DOWN
+	jr nz, .down
+	ldh a, [hJoyLast]
+	and D_LEFT
+	jr nz, .page_up
+	ldh a, [hJoyLast]
+	and D_RIGHT
+	jr nz, .page_down
+	and a
+	ret
+
+.up
+	ld hl, wDexListingCursor
+	ld a, [hl]
+	and a
+	jr z, .scroll_up
+	dec [hl]
+	scf
+	ret
+.scroll_up
+	ld hl, wDexListingScrollOffset
+	ld a, [hl]
+	and a
+	ret z
+	dec [hl]
+	scf
+	ret
+
+.down
+	ld a, [wDexListingCursor]
+	inc a
+	ld c, a ; candidate row
+	ld a, [wDexListingScrollOffset]
+	add c
+	ld d, a ; candidate index in the complete list
+	ld a, [wDexListingEnd]
+	cp d
+	ret z
+	ret c
+	ld a, [wDexListingHeight]
+	cp c
+	jr z, .scroll_down
+	jr c, .scroll_down
+	ld hl, wDexListingCursor
+	inc [hl]
+	scf
+	ret
+.scroll_down
+	ld hl, wDexListingScrollOffset
+	inc [hl]
+	scf
+	ret
+
+.page_up
+	ld hl, wDexListingScrollOffset
+	ld a, [hl]
+	and a
+	ret z
+	ld c, a
+	ld a, [wDexListingHeight]
+	cp c
+	jr c, .subtract_page
+	jr z, .subtract_page
+	xor a
+	ld [hl], a
+	scf
+	ret
+.subtract_page
+	ld a, c
+	ld c, a
+	ld a, [wDexListingHeight]
+	ld d, a
+	ld a, c
+	sub d
+	ld [hl], a
+	scf
+	ret
+
+.page_down
+	; max_scroll = max(0, listing_end - listing_height)
+	ld a, [wDexListingEnd]
+	ld c, a
+	ld a, [wDexListingHeight]
+	ld d, a
+	ld a, c
+	sub d
+	jr nc, .got_max_scroll
+	xor a
+.got_max_scroll
+	ld c, a
+	ld hl, wDexListingScrollOffset
+	ld a, [hl]
+	cp c
+	ret nc
+	add d
+	cp c
+	jr c, .store_page_down
+	ld a, c
+.store_page_down
+	ld [hl], a
+	scf
+	ret
+
+Pokedex_UpdateMainListingIndicators:
+; The side buttons are rendered from the current physical D-pad state.  This
+; makes them remain pressed while held without blocking list redraws.
+	ldh a, [hJoyDown]
+	and D_PAD
+	ld c, a
+	ld a, [wUnusedPokedexByte]
+	cp c
+	ret z
+	ld a, c
+	ld [wUnusedPokedexByte], a
+	call Pokedex_DrawIndicators
+	ld a, c
+	and D_UP
+	call nz, Pokedex_DrawIndicatorUpPressed
+	ld a, c
+	and D_DOWN
+	call nz, Pokedex_DrawIndicatorDownPressed
+	ld a, c
+	and D_LEFT
+	call nz, Pokedex_DrawIndicatorLeftPressed
+	ld a, c
+	and D_RIGHT
+	call nz, Pokedex_DrawIndicatorRightPressed
+	scf
+	ret
+
+Pokedex_CommitMainListingTilemap:
+; wTilemap is complete before this starts.  Let VBlank copy its three thirds,
+; then disable further transfers so the next list construction stays hidden.
+	call WaitBGMap
+	jp Pokedex_ResetBGMapMode
 	
 Pokedex_InitDexEntryScreen:
 	call LowVolume
@@ -2001,14 +2160,23 @@ Pokedex_PutOldModeCursorOAM:
 	ld a, [hl]
 	inc [hl]
 	and $4
-	jr z, .blink_on
-	ld hl, OldModeCursorBlankOAM
+	jr nz, Pokedex_HideOldModeCursorOAM
+	ld hl, OldModeCursorOAM
 	call Pokedex_LoadCursorOAM
 	ret
 
-.blink_on
-	ld hl, OldModeCursorOAM
-	call Pokedex_LoadCursorOAM
+Pokedex_HideOldModeCursorOAM:
+; Blink by hiding the cursor sprites.  Tile $0e is visible, so substituting it
+; as a supposedly blank tile paints a white band across the list.
+	ld hl, wShadowOAMSprite00YCoord
+	ld de, SPRITEOAMSTRUCT_LENGTH
+	ld b, 20
+	xor a
+.loop
+	ld [hl], a
+	add hl, de
+	dec b
+	jr nz, .loop
 	ret
 
 OldModeCursorOAM: ; erosunica: modded to accommodate the new graphic
@@ -2489,36 +2657,159 @@ Pokedex_ResetBGMapMode:
 	ret
 
 DexSideMenu:
-	ld hl, DexSideMenuHeader
-	call CopyMenuHeader
-	ld a, [wMenuCursorY]
-	call StoreMenuCursorPosition
-	call VerticalDexMenu
-	jp c, PokedexSideMenuQuit
-	ld a, [wMenuCursorY]
-	cp 1
-	jp z, PokedexSideMenuData
-	cp 2
-	jp z, PokedexSideMenuArea
-	cp 3
-	jp z, PokedexSideMenuCry
+	; The action menu is a tile graphic, not a regular text menu.  Keep its
+	; selection separate from wMenuCursorY, which belongs to the standard menu
+	; system used by the Select options menu.
+	xor a
+	ld [wDexArrowCursorPosIndex], a
+	call ClearSprites
+	call Pokedex_ClearGraphicDexSideMenuBackground
+	call Pokedex_DrawGraphicDexSideMenu
+	call Pokedex_DrawGraphicDexSideMenuCursorOAM
+	call Pokedex_WaitBGMap
+
+.input_loop
+	; DexSideMenu is entered from the main screen's A-button handler.  Polling
+	; once before accepting input consumes that press, so it cannot immediately
+	; select DATA in the new menu.
+	call JoyTextDelay
+	ldh a, [hJoyPressed]
+	and D_UP
+	jr nz, .up
+	ldh a, [hJoyPressed]
+	and D_DOWN
+	jr nz, .down
+	ldh a, [hJoyPressed]
+	and A_BUTTON
+	jr nz, .select
+	ldh a, [hJoyPressed]
+	and B_BUTTON
+	jr nz, .cancel
+	call DelayFrame
+	jr .input_loop
+
+.up
+	ld hl, wDexArrowCursorPosIndex
+	ld a, [hl]
+	and a
+	jr nz, .decrement
+	ld a, 3
+	jr .store_cursor_pos
+.decrement
+	dec a
+.store_cursor_pos
+	ld [hl], a
+	jr .update_cursor
+
+.down
+	ld hl, wDexArrowCursorPosIndex
+	ld a, [hl]
+	inc a
 	cp 4
-	jp z, PokedexSideMenuQuit
+	jr c, .store_cursor_pos
+	xor a
+	jr .store_cursor_pos
+
+.update_cursor
+	call Pokedex_DrawGraphicDexSideMenuCursorOAM
+	call Pokedex_WaitBGMap
+	call MenuClickSound
+	jr .input_loop
+
+.select
+	ld a, [wDexArrowCursorPosIndex]
+	ld hl, .ActionJumptable
+	call Pokedex_LoadPointer
+	jp hl
+
+.cancel
+	jp PokedexSideMenuQuit
+
+.ActionJumptable:
+	dw PokedexSideMenuData
+	dw PokedexSideMenuArea
+	dw PokedexSideMenuCry
+	dw PokedexSideMenuQuit
+
+Pokedex_DrawGraphicDexSideMenu:
+	; DATA, AREA, CRY, and BACK graphics, already loaded by Pokedex_LoadGFX.
+	ld hl, Pokedex_GraphicDexSideMenuTiles
+	ld de, wTilemap + 1 * SCREEN_WIDTH + 14
+	ld b, 4
+.row
+	ld a, [hli]
+	ld [de], a
+	inc de
+	ld a, [hli]
+	ld [de], a
+	inc de
+	ld a, [hli]
+	ld [de], a
+	ld a, e
+	add SCREEN_WIDTH - 2
+	ld e, a
+	jr nc, .next_row
+	inc d
+.next_row
+	ld a, e
+	add SCREEN_WIDTH
+	ld e, a
+	jr nc, .continue
+	inc d
+.continue
+	dec b
+	jr nz, .row
 	ret
 
-DexSideMenuHeader:
-	db MENU_BACKUP_TILES ; flags
-	menu_coords 13, 0, SCREEN_WIDTH - 1, TEXTBOX_Y - 3
-	dw .SideMenuData
-	db 1 ; default option
+Pokedex_ClearGraphicDexSideMenuBackground:
+	; Cover the list's directional-arrow background before the menu graphics.
+	ld a, $32
+	hlcoord 13, 0
+	lb bc, 9, 7
+	call Pokedex_FillBox
+	ret
 
-.SideMenuData:
-	db STATICMENU_WRAP | STATICMENU_CURSOR | STATICMENU_NO_TOP_SPACING ; flags
-	db 4 ; items
-	db "DATA@" ; DATA
-	db "AREA@" ; AREA
-	db "CRY@" ; CRY
-	db "BACK@" ; BACK
+Pokedex_GraphicDexSideMenuTiles:
+	db $47, $48, $49 ; DATA at (0e, 01)
+	db $4a, $4b, $4c ; AREA at (0e, 03)
+	db $59, $5a, $5b ; CRY  at (0e, 05)
+	db $3b, $3c, $3e ; BACK at (0e, 07)
+
+Pokedex_DrawGraphicDexSideMenuCursorOAM:
+	; OBJ tiles come from vTiles0, the first VRAM tile area.  Start the square
+	; at screen tile (12, 1), immediately left of the menu's 3-tile graphics.
+	ld a, [wDexArrowCursorPosIndex]
+rept 4
+	add a
+endr
+	ld c, a
+	ld hl, .CursorOAM
+	ld de, wShadowOAMSprite00
+	ld b, 4
+.loop
+	ld a, [hli] ; y
+	add c
+	ld [de], a
+	inc de
+	ld a, [hli] ; x
+	ld [de], a
+	inc de
+	ld a, [hli] ; tile
+	ld [de], a
+	inc de
+	ld a, [hli] ; attributes
+	ld [de], a
+	inc de
+	dec b
+	jr nz, .loop
+	ret
+
+.CursorOAM:
+	; x tile, y tile, x pixel, y pixel, vtile offset, attributes
+	dbsprite 13, 3, 0, 0, $00, 7
+	dbsprite 14, 3, 0, 0, $01, 7
+	dbsprite 13, 4, 0, 0, $10, 7
+	dbsprite 14, 4, 0, 0, $11, 7
 
 DexOptionsMenu:
 	ld hl, DexOptionsMenuHeader
@@ -2670,6 +2961,11 @@ VerticalDexMenu:
 	ret
 
 Pokedex_DrawIndicatorUp:
+	call Pokedex_DrawIndicatorUpPressed
+	call Pokedex_WaitBGMap
+	jr Pokedex_DrawIndicators
+
+Pokedex_DrawIndicatorUpPressed:
 	hlcoord 15, 2
 	ld [hl], $6a
 	hlcoord 16, 2
@@ -2678,10 +2974,14 @@ Pokedex_DrawIndicatorUp:
 	ld [hl], $7a
 	hlcoord 16, 3
 	ld [hl], $7b
+	ret
+
+Pokedex_DrawIndicatorDown:
+	call Pokedex_DrawIndicatorDownPressed
 	call Pokedex_WaitBGMap
 	jr Pokedex_DrawIndicators
 
-Pokedex_DrawIndicatorDown:
+Pokedex_DrawIndicatorDownPressed:
 	hlcoord 15, 6
 	ld [hl], $68
 	hlcoord 16, 6
@@ -2690,10 +2990,14 @@ Pokedex_DrawIndicatorDown:
 	ld [hl], $78
 	hlcoord 16, 7
 	ld [hl], $79
+	ret
+
+Pokedex_DrawIndicatorLeft:
+	call Pokedex_DrawIndicatorLeftPressed
 	call Pokedex_WaitBGMap
 	jr Pokedex_DrawIndicators
 
-Pokedex_DrawIndicatorLeft:
+Pokedex_DrawIndicatorLeftPressed:
 	hlcoord 13, 4
 	ld [hl], $3e
 	hlcoord 14, 4
@@ -2702,10 +3006,14 @@ Pokedex_DrawIndicatorLeft:
 	ld [hl], $4e
 	hlcoord 14, 5
 	ld [hl], $4f
+	ret
+
+Pokedex_DrawIndicatorRight:
+	call Pokedex_DrawIndicatorRightPressed
 	call Pokedex_WaitBGMap
 	jr Pokedex_DrawIndicators
 
-Pokedex_DrawIndicatorRight:
+Pokedex_DrawIndicatorRightPressed:
 	hlcoord 17, 4
 	ld [hl], $6c
 	hlcoord 18, 4
@@ -2714,7 +3022,7 @@ Pokedex_DrawIndicatorRight:
 	ld [hl], $7c
 	hlcoord 18, 5
 	ld [hl], $7d
-	call Pokedex_WaitBGMap
+	ret
 
 Pokedex_DrawIndicators:
 	; UP
@@ -2763,6 +3071,6 @@ Pokedex_WaitBGMap:
 	ld a, 1 ; BG Map 0 tiles
 	ldh [hBGMapMode], a
 ; Wait for it to do its magic
-	ld c, 3
+	ld c, 4
 	call DelayFrames
-	ret
+	jp Pokedex_ResetBGMapMode
