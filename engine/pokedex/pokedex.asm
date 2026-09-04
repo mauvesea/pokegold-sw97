@@ -408,13 +408,12 @@ Pokedex_MainListingHandleDPadInput:
 
 Pokedex_UpdateMainListingIndicators:
 	; e is nonzero only when navigation actually scrolls the visible list.
-	; Ordinary cursor movement and merely holding a direction do not flash.
-	ld c, e
-	ld a, [wUnusedPokedexByte]
-	cp c
+	; Flash on every movement event, including auto-repeat while a direction is
+	; held.  Ordinary cursor movement still leaves e at zero and does not flash.
+	ld a, e
+	and a
 	ret z
-	ld a, c
-	ld [wUnusedPokedexByte], a
+	ld c, a
 	call Pokedex_DrawIndicators
 	ld a, c
 	and D_UP
@@ -428,8 +427,15 @@ Pokedex_UpdateMainListingIndicators:
 	ld a, c
 	and D_RIGHT
 	call nz, Pokedex_DrawIndicatorRightPressed
+	; The caller keeps its list-redraw flag in b.  The queued transfer uses b and
+	; c as loop counters, so preserve both across the complete flash interval.
 	push bc
 	call Pokedex_QueueMainListingIndicators
+	; Keep the pressed graphic visible briefly before the caller redraws and
+	; commits the newly scrolled list with the normal indicators.
+	ld c, 3
+	call DelayFrames
+	call Pokedex_DrawIndicators
 	pop bc
 	scf
 	ret
@@ -517,19 +523,25 @@ Pokedex_InitDexEntryScreen:
 	hlcoord 0, 0
 	lb bc, 16, 18
 	call Pokedex_PlaceBorder	
-	call WaitBGMap
+	call Pokedex_WaitBGMap
+	; Hold the cleared, bordered screen for roughly one second before beginning
+	; to compose the entry.
+	ld c, 60
+	call DelayFrames
+	; Compose all entry text in wTilemap while BG transfers are disabled, so it
+	; is revealed in one update rather than appearing a piece at a time.
 	call Pokedex_DrawDexEntryScreenBG
 	call Pokedex_GetSelectedMon
 	ld [wPrevDexEntry], a
+	ld [wCurPartySpecies], a
 	farcall DisplayDexEntry
 	call Pokedex_LoadSelectedMonTiles
-	call WaitBGMap
-	call Pokedex_GetSelectedMon
-	ld [wCurPartySpecies], a
 	ld a, SCGB_POKEDEX
 	call Pokedex_GetSGBLayout
+	call WaitBGMap
+	; Preserve the original pause between the text and the picture/cry.
 	ld c, 20
-	call DelayFrames	
+	call DelayFrames
 	call Pokedex_PlaceFrontpicTopLeftCorner
 	ld a, [wCurPartySpecies]
 	call PlayMonCry
