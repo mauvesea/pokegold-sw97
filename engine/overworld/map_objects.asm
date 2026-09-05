@@ -2679,6 +2679,7 @@ _UpdateSprites::
 	ldh [hOAMUpdate], a
 	call InitSprites
 	call .fill
+	call .mask_flashlight_oam
 	pop af
 	ldh [hOAMUpdate], a
 	ret
@@ -2698,6 +2699,36 @@ _UpdateSprites::
 	add hl, de
 	cp l
 	jr nz, .loop
+	ret
+
+.mask_flashlight_oam
+	ldh a, [hOverworldFlashlightEffect]
+	and a
+	ret z
+	ld hl, wShadowOAM
+	ld de, SPRITEOAMSTRUCT_LENGTH
+	ld b, NUM_SPRITE_OAM_STRUCTS
+.mask_loop
+	push hl
+	ld a, [hli] ; hardware y coordinate
+	cp 6 * TILE_WIDTH + 2 * TILE_WIDTH
+	jr c, .mask
+	cp 12 * TILE_WIDTH + 2 * TILE_WIDTH - TILE_WIDTH + 1
+	jr nc, .mask
+	ld a, [hl] ; hardware x coordinate
+	cp 6 * TILE_WIDTH + TILE_WIDTH
+	jr c, .mask
+	cp 12 * TILE_WIDTH + 1
+	jr nc, .mask
+	pop hl
+	jr .next_oam
+.mask
+	pop hl
+	ld [hl], SCREEN_HEIGHT_PX + 2 * TILE_WIDTH
+.next_oam
+	add hl, de
+	dec b
+	jr nz, .mask_loop
 	ret
 
 ApplyBGMapAnchorToObjects::
