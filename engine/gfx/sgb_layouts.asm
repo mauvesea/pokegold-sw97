@@ -377,7 +377,7 @@ endr
 	ld de, wSGBPals
 	ld bc, PALPACKET_LENGTH
 	call CopyBytes
-	call .GetMapPalsIndex
+	call SGB_GetMapPalsIndex
 	ld hl, wSGBPals + 1
 	ld [hld], a
 	ld de, BlkPacket_AllPal0
@@ -449,7 +449,7 @@ endr
 	ld de, wSGBPals + PALPACKET_LENGTH
 	ld bc, PALPACKET_LENGTH
 	call CopyBytes
-	call .GetMapPalsIndex
+	call SGB_GetMapPalsIndex
 	ld hl, wSGBPals + 1
 	ld [hl], a
 	ld hl, wSGBPals + 3
@@ -551,7 +551,7 @@ endr
 	ld de, BlkPacket_AllPal0
 	ret
 
-.GetMapPalsIndex:
+SGB_GetMapPalsIndex:
 	ld a, [wTimeOfDayPal]
 	cp NITE_F
 	jr c, .morn_day
@@ -593,6 +593,18 @@ endr
 .gate
 	ld a, PREDEFPAL_PEWTER
 	ret
+
+SGB_LoadMapPalsPacketOnly::
+; Seamless map connections already use the all-palette-0 region layout. Update
+; its palette without resending the identical ATTR_BLK packet and its delay.
+	ld hl, PalPacket_AllPal0
+	ld de, wSGBPals
+	ld bc, PALPACKET_LENGTH
+	call CopyBytes
+	call SGB_GetMapPalsIndex
+	ld [wSGBPals + 1], a
+	ld hl, wSGBPals
+	jp PushSGBPals
 
 INCLUDE "data/maps/sgb_roof_pal_inds.asm"
 

@@ -108,6 +108,7 @@ EnterMap:
 	ld [wXYComparePointer], a
 	ld [wXYComparePointer + 1], a
 	call SetUpFiveStepWildEncounterCooldown
+	farcall PreparePokemonFollowerForMap
 	farcall RunMapSetupScript
 	call DisableEvents
 
@@ -123,6 +124,7 @@ EnterMap:
 	xor a
 	ld [wPoisonStepCount], a
 .dontresetpoison
+	farcall InitPokemonFollowerForMap
 
 	xor a ; end map entry
 	ldh [hMapEntryMethod], a
@@ -151,6 +153,7 @@ HandleMap:
 	call HandleMapBackground
 	farcall UpdateToolgearClock
 	call CheckPlayerState
+	farcall UpdatePokemonFollower
 	ret
 
 MapEvents:
@@ -177,6 +180,14 @@ MaxOverworldDelay:
 	db 2
 
 ResetOverworldDelay:
+	ld hl, wPokemonFollowerFlags
+	bit POKEMON_FOLLOWER_CONNECTION_FRAME_F, [hl]
+	jr z, .normal
+	xor a
+	ld [wOverworldDelay], a
+	ret
+
+.normal
 	ld a, [MaxOverworldDelay]
 	ld [wOverworldDelay], a
 	ret
@@ -208,6 +219,12 @@ HandleMapObjects:
 HandleMapBackground:
 	farcall _UpdateSprites
 	farcall ScrollScreen
+	ld hl, wPokemonFollowerFlags
+	bit POKEMON_FOLLOWER_CONNECTION_FRAME_F, [hl]
+	ret z
+	res POKEMON_FOLLOWER_CONNECTION_FRAME_F, [hl]
+	xor a
+	ldh [hOAMUpdate], a
 	ret
 
 CheckPlayerState:
@@ -532,6 +549,12 @@ TryObjectEvent:
 	add hl, bc
 	ld a, [hl]
 	ldh [hLastTalked], a
+	cp FOLLOWER_OBJECT
+	jr nz, .not_follower
+	farcall PokemonFollowerInteraction
+	ret
+
+.not_follower
 
 	ldh a, [hLastTalked]
 	call GetMapObject

@@ -181,6 +181,7 @@ SwitchPartyMons:
 	jr c, .DontSwitch
 
 	farcall _SwitchPartyMons
+	farcall RefreshPokemonFollowerAfterPartyChange
 
 	xor a
 	ld [wPartyMenuActionText], a

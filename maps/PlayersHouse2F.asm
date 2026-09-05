@@ -118,6 +118,13 @@ PlayersHouseRadioScript:
 	opentext
 	givepoke CHIKORITA, 5
 	givepoke PIKACHU, 5
+	giveitem BICYCLE
+	giveitem SKATEBOARD
+	giveitem COIN_CASE
+	givecoins 20
+	giveitem KEY_HOLDER
+	giveitem BALL_HOLDER
+	giveitem TMHM_HOLDER
 	closetext
 	end
 	checkevent EVENT_LISTENED_TO_INITIAL_RADIO
@@ -337,11 +344,6 @@ PlayersHouse2F_MapEvents:
 
 
 PlayersHouse2F_CardMinigame:
-	giveitem COIN_CASE
-	givecoins 20
-	giveitem KEY_HOLDER
-	giveitem BALL_HOLDER
-	giveitem TMHM_HOLDER
 	refreshscreen
 	setval FALSE
 	special UnusedMemoryGame
@@ -349,11 +351,6 @@ PlayersHouse2F_CardMinigame:
 	end
 
 PlayersHouse2F_CardMinigame2:
-	giveitem COIN_CASE
-	givecoins 20
-	giveitem KEY_HOLDER
-	giveitem BALL_HOLDER
-	giveitem TMHM_HOLDER
 	refreshscreen
 	setval FALSE
 	special CardFlip

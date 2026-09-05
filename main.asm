@@ -401,3 +401,5 @@ SECTION "Stadium 2 Checksums", ROMX[$7DF8], BANK[$7F]
 SECTION "Picross", ROMX
 INCLUDE "engine/games/picross_menu.asm"
 INCLUDE "engine/games/picross_minigame.asm"
+
+INCLUDE "engine/events/pokemon_follower.asm"

@@ -1896,7 +1896,12 @@ wBGMapAnchor:: dw
 
 wUsedSprites:: ds SPRITE_GFX_LIST_CAPACITY * 2
 wUsedSpritesEnd::
-	ds 8
+
+; Persistent Toolgear state must not live inside wTileset: LoadMapTileset
+; replaces that entire structure during every connected-map transition.
+wToolgearClockFlags:: db
+wToolgearClockLastSecond:: db
+	ds 6
 
 wOverworldMapAnchor:: dw
 wPlayerMetatileY:: db
@@ -1936,10 +1941,7 @@ wTilesetBlocksAddress:: dw
 wTilesetCollisionBank:: db
 wTilesetCollisionAddress:: dw
 wTilesetAnim:: dw ; bank 3f
-; These two bytes were unused. The Toolgear clock only needs state here; its
-; temporary tilemap is wBGMapBuffer while that buffer is otherwise idle.
-wToolgearClockFlags:: db
-wToolgearClockLastSecond:: db
+	ds 2
 wTilesetPalettes:: dw ; bank 3f
 wTilesetEnd::
 	assert wTilesetEnd - wTileset == TILESET_LENGTH
@@ -2264,7 +2266,10 @@ wMapReentryScriptQueueFlag:: db
 wMapReentryScriptBank:: db
 wMapReentryScriptAddress:: dw
 
-	ds 4
+wPokemonFollowerPartyIndex:: db
+wPokemonFollowerSpecies:: db
+wPokemonFollowerFlags:: db
+	ds 1
 
 wTimeCyclesSinceLastCall:: db
 wReceiveCallDelay_MinsRemaining:: db

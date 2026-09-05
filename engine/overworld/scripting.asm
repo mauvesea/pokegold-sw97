@@ -749,6 +749,13 @@ Script_applymovement:
 	ld c, a
 
 ApplyMovement:
+	ld a, c
+	and a ; PLAYER
+	jr nz, .not_player
+	push bc
+	farcall SuspendPokemonFollowerForScript
+	pop bc
+.not_player
 	push bc
 	ld a, c
 	farcall FreezeAllOtherObjects
@@ -918,6 +925,7 @@ ApplyEventActionAppearDisappear:
 	ret
 
 Script_follow:
+	farcall SuspendPokemonFollowerForScript
 	call GetScriptByte
 	ld b, a
 	call GetScriptByte

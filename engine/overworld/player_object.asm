@@ -140,7 +140,7 @@ CopyObjectStruct::
 	add hl, de
 	ldh a, [hObjectStructIndex]
 	inc a
-	cp NUM_OBJECT_STRUCTS
+	cp FOLLOWER_OBJECT_STRUCT
 	jr nz, .loop
 	scf
 	ret ; overflow

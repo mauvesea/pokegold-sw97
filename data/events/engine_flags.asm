@@ -102,6 +102,7 @@ EngineFlags:
 
 	engine_flag wLuckyNumberShowFlag, LUCKYNUMBERSHOW_GAME_OVER_F
 
+	; pokemon follower system
 	engine_flag wStatusFlags2, STATUSFLAGS2_UNUSED_3_F
 
 	engine_flag wDailyFlags1, DAILYFLAGS1_KURT_MAKING_BALLS_F

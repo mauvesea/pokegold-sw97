@@ -83,8 +83,7 @@ MapSetupScript_Connection:
 	mapsetup SaveScreen
 	mapsetup LoadMapObjects
 	mapsetup FadeToMapMusic
-	mapsetup LoadMapPalettes
-	mapsetup ApplyMapPalettes
+	mapsetup LoadConnectionMapPalettes
 	mapsetup LoadWildMonData
 	mapsetup UpdateRoamMons
 	mapsetup ActivateMapAnims

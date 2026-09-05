@@ -92,7 +92,7 @@
 ; wLuckyNumberShowFlag
 	const ENGINE_LUCKY_NUMBER_SHOW
 ; wStatusFlags2
-	const ENGINE_4E
+	const ENGINE_PET_SYS_ON
 ; wDailyFlags1
 	const ENGINE_KURT_MAKING_BALLS
 	const ENGINE_DAILY_BUG_CONTEST

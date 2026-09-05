@@ -362,7 +362,7 @@ CopyPlayerObjectTemplate::
 	call CopyBytes
 	ret
 
-DeleteFollowerMapObject: ; unreferenced
+DeleteFollowerMapObject::
 	call GetMapObject
 	ld hl, MAPOBJECT_OBJECT_STRUCT_ID
 	add hl, bc
@@ -425,7 +425,7 @@ FindFirstEmptyObjectStruct::
 	push de
 	ld hl, wObjectStructs
 	ld de, OBJECT_LENGTH
-	ld c, NUM_OBJECT_STRUCTS
+	ld c, FOLLOWER_OBJECT_STRUCT
 .loop
 	ld a, [hl]
 	and a
@@ -437,7 +437,7 @@ FindFirstEmptyObjectStruct::
 	jr .done
 
 .break
-	ld a, NUM_OBJECT_STRUCTS
+	ld a, FOLLOWER_OBJECT_STRUCT
 	sub c
 	scf
 

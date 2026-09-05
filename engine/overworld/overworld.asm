@@ -40,6 +40,13 @@ RefreshSprites::
 	ld hl, wUsedSprites
 	call ByteFill
 	call GetPlayerSprite
+; The player always owns slot 0 ($00/$80); the follower always owns slot 1
+; ($0c/$8c). Do not put the follower through the generic slot search.
+	farcall GetPokemonFollowerSprite
+	jr nc, .no_follower
+	ld a, c
+	ld [wUsedSprites + FOLLOWER_SPRITE_GFX_SLOT * 2], a
+.no_follower
 	call AddMapSprites
 	ret
 
@@ -110,7 +117,11 @@ AddOutdoorSprites:
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a
-	ld c, MAX_OUTDOOR_SPRITES
+; Slot 1 replaces the first animated entry in every outdoor set. Starting at
+; entry 2 keeps the other eight animated and two static sprites in their
+; original VRAM positions.
+	inc hl
+	ld c, MAX_OUTDOOR_SPRITES - 1
 .loop
 	push bc
 	ld a, [hli]

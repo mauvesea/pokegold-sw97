@@ -1,4 +1,13 @@
 DoPlayerMovement::
+	call .WaitForPokemonFollowerJump
+	jr nc, .read_input
+	ld a, movement_step_sleep
+	ld [wPlayerNextMovement], a
+	ld a, PLAYERMOVEMENT_CONTINUE
+	ld c, a
+	ret
+
+.read_input
 	call .GetDPad
 	ld a, movement_step_sleep
 	ld [wMovementAnimation], a
@@ -8,6 +17,25 @@ DoPlayerMovement::
 	ld c, a
 	ld a, [wMovementAnimation]
 	ld [wPlayerNextMovement], a
+	ret
+
+.WaitForPokemonFollowerJump:
+; Do not let held input move the player again before the pet lands. Returning
+; CONTINUE also suppresses button actions for these few catch-up frames.
+	ld a, [wObjectFollow_Leader]
+	and a ; PLAYER_OBJECT
+	jr nz, .not_waiting
+	ld a, [wObjectFollow_Follower]
+	cp FOLLOWER_OBJECT_STRUCT
+	jr nz, .not_waiting
+	ld a, [wObject12StepType]
+	cp STEP_TYPE_NPC_JUMP
+	jr nz, .not_waiting
+	scf
+	ret
+
+.not_waiting
+	and a
 	ret
 
 .GetDPad:
@@ -53,8 +81,6 @@ DoPlayerMovement::
 	ret c
 	call .TryJump
 	ret c
-	call .TryJumpSkateboard
-	ret c
 	call .CheckWarp
 	ret c
 	jr .NotMoving
@@ -80,8 +106,6 @@ DoPlayerMovement::
 	call .TryStep
 	ret c
 	call .TryJump
-	ret c
-	call .TryJumpSkateboard
 	ret c
 	call .CheckWarp
 	ret c
@@ -393,48 +417,7 @@ DoPlayerMovement::
 	db FACE_DOWN | FACE_LEFT  ; COLL_HOP_DOWN_LEFT
 	db FACE_UP | FACE_RIGHT   ; COLL_HOP_UP_RIGHT
 	db FACE_UP | FACE_LEFT    ; COLL_HOP_UP_LEFT
-	
-.TryJumpSkateboard:
-	ld a, [wPlayerState]
-	cp PLAYER_SKATE
-	jr nz, .DontJumpSkateboard
-	ld a, [wPlayerTile]
-	ld e, a
-	and $f0
-	cp HI_NYBBLE_SKATE_JUMP
-	jr nz, .DontJumpSkateboard
 
-	ld a, e
-	and 7
-	ld e, a
-	ld d, 0
-	ld hl, .ledge_table_skateboard
-	add hl, de
-	ld a, [wFacingDirection]
-	and [hl]
-	jr z, .DontJumpSkateboard
-
-	ld de, SFX_JUMP_OVER_LEDGE
-	call PlaySFX
-	ld a, STEP_LEDGE
-	call .DoStep
-	ld a, PLAYERMOVEMENT_JUMP
-	scf
-	ret
-
-.DontJumpSkateboard:
-	xor a
-	ret
-
-.ledge_table_skateboard
-	db FACE_RIGHT             ; COLL_HOP_RIGHT
-	db FACE_LEFT              ; COLL_HOP_LEFT
-	db FACE_UP                ; COLL_HOP_UP
-	db FACE_DOWN              ; COLL_HOP_DOWN
-	db FACE_RIGHT | FACE_DOWN ; COLL_HOP_DOWN_RIGHT
-	db FACE_DOWN | FACE_LEFT  ; COLL_HOP_DOWN_LEFT
-	db FACE_UP | FACE_RIGHT   ; COLL_HOP_UP_RIGHT
-	db FACE_UP | FACE_LEFT    ; COLL_HOP_UP_LEFT	
 
 .CheckWarp:
 ; BUG: No bump noise if standing on tile $3E (see docs/bugs_and_glitches.md)
@@ -577,10 +560,15 @@ DoPlayerMovement::
 	ret
 
 .CheckForced:
-; When sliding on ice, input is forced to remain in the same direction.
+; When sliding on ice or skating, keep moving in the same direction unless
+; the player supplies a new direction.
 
 	call CheckStandingOnIce
 	ret nc
+
+	ld a, [wCurInput]
+	and D_PAD
+	ret nz
 
 	ld a, [wPlayerTurningDirection]
 	cp 0
@@ -679,6 +667,9 @@ ENDM
 	ld bc, wObjectStructs ; redundant
 	farcall IsNPCAtCoord
 	jr nc, .no_npc
+	ldh a, [hObjectStructIndex]
+	cp FOLLOWER_OBJECT_STRUCT
+	jr z, .no_npc
 	call .CheckStrengthBoulder
 	jr c, .no_bump
 
