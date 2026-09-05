@@ -1,4 +1,4 @@
-; The first healthy, non-Egg party Pokemon follows the player in the overworld.
+; The first healthy, awake, unfrozen, non-Egg party Pokemon follows the player.
 
 SECTION "Pokemon Follower", ROMX
 
@@ -120,7 +120,21 @@ UpdatePokemonFollower::
 	jp nz, DismissPokemonFollower
 	ld a, [wPlayerState]
 	and a ; PLAYER_NORMAL
-	jp nz, DismissPokemonFollower
+	jr z, .walking
+	cp PLAYER_BIKE
+	jr z, .delay_state_restore
+	cp PLAYER_SKATE
+	jr nz, .dismiss_for_state
+
+.delay_state_restore
+; After leaving the Bike or Skateboard, wait for a completed walking step before
+; restoring the follower, just as after a non-seamless warp.
+	ld hl, wPokemonFollowerFlags
+	set POKEMON_FOLLOWER_WARP_PENDING_F, [hl]
+.dismiss_for_state
+	jp DismissPokemonFollower
+
+.walking
 
 ; Scripted player movement and the normal follow command share the follow queue.
 	ld hl, wPokemonFollowerFlags
@@ -134,11 +148,11 @@ UpdatePokemonFollower::
 .not_scripted
 	ld a, [wObjectFollow_Follower]
 	cp -1
-	jr z, .check_warp
+	jr z, .check_respawn
 	cp FOLLOWER_OBJECT_STRUCT
 	jp nz, DismissPokemonFollower
 
-.check_warp
+.check_respawn
 	ld hl, wPokemonFollowerFlags
 	bit POKEMON_FOLLOWER_WARP_PENDING_F, [hl]
 	jr z, .refresh
@@ -360,6 +374,13 @@ FindPokemonFollower:
 	pop hl
 	cp EGG
 	jr z, .next
+	push hl
+	ld de, MON_STATUS
+	add hl, de
+	ld a, [hl]
+	and (1 << FRZ) | SLP_MASK
+	pop hl
+	jr nz, .next
 	push hl
 	ld de, MON_HP
 	add hl, de

@@ -1946,12 +1946,7 @@ GetFollowerNextMovementIndex:
 	ld hl, wFollowerMovementQueueLength
 	ld a, [hl]
 	and a
-	jr nz, .has_queued_step
-	call .DequeuePokemonFollowerJump
-	ret c
-	jr .done
-
-.has_queued_step
+	jr z, .done
 	cp -1
 	jr z, .done
 	dec [hl]
@@ -1973,30 +1968,6 @@ GetFollowerNextMovementIndex:
 	call .CancelFollowIfLeaderMissing
 	ret c
 	ld a, movement_step_sleep
-	ret
-
-.DequeuePokemonFollowerJump:
-; A normal follower stays one movement command behind the leader. A ledge jump
-; takes twice as long as the preceding walk, so make the pet start its buffered
-; jump without waiting for the player to queue another step.
-	ld a, [wObjectFollow_Leader]
-	and a ; PLAYER_OBJECT
-	jr nz, .not_pet_jump
-	ld a, [wObjectFollow_Follower]
-	cp FOLLOWER_OBJECT_STRUCT
-	jr nz, .not_pet_jump
-	ld a, [wFollowMovementQueue]
-	and $fc
-	cp movement_jump_step
-	jr nz, .not_pet_jump
-	ld a, -1
-	ld [wFollowerMovementQueueLength], a
-	ld a, [wFollowMovementQueue]
-	scf
-	ret
-
-.not_pet_jump
-	and a
 	ret
 
 .CancelFollowIfLeaderMissing:
