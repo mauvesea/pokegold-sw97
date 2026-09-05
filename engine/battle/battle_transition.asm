@@ -583,10 +583,9 @@ StartTrainerBattle_LoadPokeBallGraphics:
 
 .cgb
 	ld hl, .pals
-	ld a, [wTimeOfDayPal]
-	maskbits NUM_DAYTIMES
-	cp DARKNESS_F
-	jr nz, .not_dark
+	ldh a, [hOverworldFlashlightEffect]
+	and a
+	jr z, .not_dark
 	ld hl, .darkpals
 .not_dark
 	call .copypals

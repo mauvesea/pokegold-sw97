@@ -14,6 +14,18 @@ _LoadMapPart::
 	inc hl
 
 .left_column
+	ldh a, [hOverworldFlashlightEffect]
+	and a
+	jr z, .no_flashlight
+	cp 1
+	jp z, ForceApplyFlashlight1
+	cp 2
+	jp z, ForceApplyFlashlight2
+	cp 3
+	jp z, ForceApplyFlashlight3
+	jp ForceApplyFlashlight4
+
+.no_flashlight
 	decoord 0, 0
 	ld b, SCREEN_HEIGHT
 .loop
@@ -35,8 +47,7 @@ _LoadMapPart::
 	jr nz, .loop
 	ret
 
-ForceApplyFlashlight1: ; unreferenced
-; See pokegold-spaceworld's ApplyFlashlight.force_1 in home/map.asm.
+ForceApplyFlashlight1:
 	decoord 2, 2
 	ld bc, (SURROUNDING_WIDTH + 1) * 2
 	add hl, bc
@@ -67,8 +78,7 @@ ForceApplyFlashlight1: ; unreferenced
 	jr nz, .loop
 	ret
 
-ForceApplyFlashlight2: ; unreferenced
-; See pokegold-spaceworld's ApplyFlashlight.force_2 in home/map.asm.
+ForceApplyFlashlight2:
 	decoord 4, 4
 	ld bc, (SURROUNDING_WIDTH + 1) * 4
 	add hl, bc
@@ -99,8 +109,7 @@ ForceApplyFlashlight2: ; unreferenced
 	jr nz, .loop
 	ret
 
-ForceApplyFlashlight3: ; unreferenced
-; See pokegold-spaceworld's ApplyFlashlight.force_3 in home/map.asm.
+ForceApplyFlashlight3:
 	decoord 6, 6
 	ld bc, (SURROUNDING_WIDTH + 1) * 6
 	add hl, bc
@@ -131,8 +140,7 @@ ForceApplyFlashlight3: ; unreferenced
 	jr nz, .loop
 	ret
 
-ForceApplyFlashlight4: ; unreferenced
-; See pokegold-spaceworld's ApplyFlashlight.force_4 in home/map.asm.
+ForceApplyFlashlight4:
 	decoord 8, 8
 	ld bc, (SURROUNDING_WIDTH + 1) * 8
 	add hl, bc

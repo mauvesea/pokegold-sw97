@@ -96,6 +96,8 @@ VBlank0::
 
 	call UpdateBGMapBuffer
 	jr c, .done
+	call RunFlashlightVBlank
+	jr c, .done
 	call UpdatePalsIfCGB
 	jr c, .done
 	call UpdateBGMap

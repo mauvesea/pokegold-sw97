@@ -112,6 +112,9 @@ endr
 	ret
 
 ReplaceTimeOfDayPals::
+	xor a
+	ldh [hOverworldFlashlightEffect], a
+	ldh [hFlashlightRedrawMode], a
 	ld hl, .BrightnessLevels
 	ld a, [wMapTimeOfDay]
 	cp PALETTE_DARK
@@ -130,6 +133,8 @@ ReplaceTimeOfDayPals::
 	ld a, [wStatusFlags]
 	bit STATUSFLAGS_FLASH_F, a
 	jr nz, .UsedFlash
+	ld a, 3 ; 6x6 tiles, as in pokegold-spaceworld
+	ldh [hOverworldFlashlightEffect], a
 	ld a, DARKNESS_PALSET
 	ld [wTimeOfDayPalset], a
 	ret
@@ -179,6 +184,14 @@ GetTimePalette:
 	ret
 
 .DarknessPalette:
+	ldh a, [hOverworldFlashlightEffect]
+	and a
+	jr z, .get_palette
+	; Space World's visible area uses the cave/night palette.
+	ld a, NITE_F
+	ret
+
+.get_palette
 	ld a, [wTimeOfDayPalset]
 	and %11000000
 	rlca

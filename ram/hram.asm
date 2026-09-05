@@ -170,4 +170,15 @@ ELSE
 	ds 1
 ENDC
 
-	ds 20
+hOverworldFlashlightEffect:: db
+; Influences how far the map is drawn around the player in dark caves.
+; 0 - regular distance
+; 1 - 14x14 tile block
+; 2 - 10x10 tile block
+; 3 -  6x 6 tile block
+; 4 -  2x 2 tile block
+
+hFlashlightRedrawMode:: db
+; Four staged row/column redraws keep the aperture centered while walking.
+
+	ds 18

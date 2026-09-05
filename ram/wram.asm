@@ -1881,7 +1881,14 @@ wPrevWarp:: db
 wPrevMapGroup:: db
 wPrevMapNumber:: db
 
-	ds 17
+wRedrawFlashlightDst0:: dw
+wRedrawFlashlightSrc0:: dw
+wRedrawFlashlightBlackDst0:: dw
+wRedrawFlashlightDst1:: dw
+wRedrawFlashlightSrc1:: dw
+wRedrawFlashlightBlackDst1:: dw
+wRedrawFlashlightWidthHeight:: db
+	ds 4
 
 wUnusedAddOutdoorSpritesReturnValue:: db
 

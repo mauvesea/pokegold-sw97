@@ -7,6 +7,10 @@ SECTION "Toolgear Clock VBlank", ROM0[$0063]
 
 INCLUDE "home/toolgear_clock.asm"
 
+SECTION "Flashlight VBlank", ROM0[$00a2]
+
+INCLUDE "home/flashlight_vblank.asm"
+
 SECTION "Home", ROM0
 
 INCLUDE "home/vblank.asm"
