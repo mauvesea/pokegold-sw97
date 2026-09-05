@@ -225,7 +225,7 @@ TileCollisionTable::
 	db LAND_TILE         ; dd
 	db LAND_TILE         ; de
 	db LAND_TILE         ; df
-	db LAND_TILE         ; e0
+	db WALL_TILE         ; COLL_SKATEBOARD_WALL
 	db LAND_TILE         ; e1
 	db LAND_TILE         ; e2
 	db LAND_TILE         ; e3

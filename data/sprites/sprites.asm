@@ -104,4 +104,6 @@ OverworldSprites:
 	overworld_sprite SilverTrophySpriteGFX, 4, STILL_SPRITE, PAL_OW_EMOTE
 	overworld_sprite ChrisSkateboardSpriteGFX, 12, WALKING_SPRITE, PAL_OW_RED
 	overworld_sprite PoliwrathSpriteGFX, 12, WALKING_SPRITE, PAL_OW_RED
+	overworld_sprite PikachuFollowerGFX, 12, WALKING_SPRITE, PAL_OW_RED
+	overworld_sprite PlantFollowerGFX, 12, WALKING_SPRITE, PAL_OW_RED
 	assert_table_length NUM_OVERWORLD_SPRITES

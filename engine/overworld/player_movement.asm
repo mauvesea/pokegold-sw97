@@ -13,7 +13,10 @@ DoPlayerMovement::
 	ld [wMovementAnimation], a
 	xor a
 	ld [wWalkingIntoEdgeWarp], a
+	call .HandleSkateboardMovement
+	jr c, .movement_done
 	call .TranslateIntoMovement
+.movement_done
 	ld c, a
 	ld a, [wMovementAnimation]
 	ld [wPlayerNextMovement], a
@@ -102,6 +105,8 @@ DoPlayerMovement::
 	call .CheckTile
 	ret c
 	call .CheckTurning
+	ret c
+	call .TrySkateboardWall
 	ret c
 	call .TryStep
 	ret c
@@ -417,6 +422,86 @@ DoPlayerMovement::
 	db FACE_DOWN | FACE_LEFT  ; COLL_HOP_DOWN_LEFT
 	db FACE_UP | FACE_RIGHT   ; COLL_HOP_UP_RIGHT
 	db FACE_UP | FACE_LEFT    ; COLL_HOP_UP_LEFT
+
+.TrySkateboardWall:
+	ld a, [wWalkingX]
+	ld b, a
+	ld a, [wPlayerMapX]
+	add b
+	ld d, a
+	ld a, [wWalkingY]
+	ld b, a
+	ld a, [wPlayerMapY]
+	add b
+	ld e, a
+	call GetCoordTile
+	cp COLL_SKATEBOARD_WALL
+	jr nz, .NotSkateboardWall
+
+; A regular ledge jump spans two collision tiles. GetCoordTile expects the
+; player's coordinates in the current map buffer, not wXCoord/wYCoord.
+	ld a, [wWalkingX]
+	add a
+	ld b, a
+	ld a, [wPlayerMapX]
+	add b
+	ld d, a
+	ld a, [wWalkingY]
+	add a
+	ld b, a
+	ld a, [wPlayerMapY]
+	add b
+	ld e, a
+	call GetCoordTile
+	call .CheckWalkable
+	jr nc, .jump
+	ld a, [wWalkingDirection]
+	ld [wSkateboardMovementDirection], a
+	ld a, SKATEBOARD_MOVEMENT_PENDING_BOUNCE
+	ld [wSkateboardMovementState], a
+
+.jump
+	ld de, SFX_JUMP_OVER_LEDGE
+	call PlaySFX
+	ld a, STEP_LEDGE
+	call .DoStep
+	ld a, PLAYERMOVEMENT_JUMP
+	scf
+	ret
+
+.NotSkateboardWall:
+	xor a
+	ret
+
+.HandleSkateboardMovement:
+	ld hl, wSkateboardMovementState
+	ld a, [hl]
+	and a
+	ret z
+	cp SKATEBOARD_MOVEMENT_PENDING_BOUNCE
+	jr nz, .finish_bounce
+
+	ld a, [wSkateboardMovementDirection]
+	ld [wWalkingDirection], a
+	ld [hl], SKATEBOARD_MOVEMENT_FINISH_BOUNCE
+	ld de, SFX_JUMP_OVER_LEDGE
+	call PlaySFX
+	ld a, STEP_BACK_LEDGE
+	call .DoStep
+	ld a, PLAYERMOVEMENT_JUMP
+	scf
+	ret
+
+; The return jump has finished. Clear its forced direction so the skateboard
+; remains stopped instead of immediately trying the wall again.
+.finish_bounce
+	xor a ; SKATEBOARD_MOVEMENT_NONE
+	ld [hl], a
+	ld [wSkateboardMovementDirection], a
+	call .StandInPlace
+	ld a, PLAYERMOVEMENT_NORMAL
+	scf
+	ret
 
 
 .CheckWarp:

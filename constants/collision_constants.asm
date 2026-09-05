@@ -128,6 +128,7 @@ DEF COLL_SKATE_HOP_DOWN_RIGHT    EQU $d4
 DEF COLL_SKATE_HOP_DOWN_LEFT     EQU $d5
 DEF COLL_SKATE_HOP_UP_RIGHT      EQU $d6 ; unused
 DEF COLL_SKATE_HOP_UP_LEFT       EQU $d7 ; unused
+DEF COLL_SKATEBOARD_WALL         EQU $e0
 DEF COLL_FF                EQU $ff ; garbage
 
 ; collision data type nybbles

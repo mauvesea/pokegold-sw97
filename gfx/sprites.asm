@@ -105,3 +105,9 @@ SECTION "Sprites 3", ROMX
 
 ChrisSkateboardSpriteGFX::  INCBIN "gfx/sprites/chris_skateboard.2bpp"
 PoliwrathSpriteGFX::        INCBIN "gfx/sprites/poliwrath.2bpp"
+
+
+SECTION "FollowerSprites", ROMX
+
+PikachuFollowerGFX::        INCBIN "gfx/follower/pikachu.2bpp"
+PlantFollowerGFX::          INCBIN "gfx/follower/plant.2bpp"

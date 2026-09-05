@@ -1243,7 +1243,8 @@ wPlayerStepDirection:: db
 wPlayerNextMovement:: db
 wPlayerMovement:: db
 
-	ds 2
+wSkateboardMovementState:: db
+wSkateboardMovementDirection:: db
 
 wMovementObject:: db
 wMovementDataBank:: db
