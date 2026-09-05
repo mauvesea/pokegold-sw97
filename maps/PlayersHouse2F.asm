@@ -1,6 +1,8 @@
 	object_const_def
 	const PLAYERSHOUSE_KEN
 	const PLAYERSHOUSE_KANTO_DOLL
+	const PLAYERSHOUSE_CARD_MINIGAME
+	const PLAYERSHOUSE_CARD_MINIGAME2
 
 PlayersHouse2F_MapScripts:
 	def_scene_scripts
@@ -326,4 +328,32 @@ PlayersHouse2F_MapEvents:
 	
 	def_object_events
 	object_event  8,  1, SPRITE_ROCKER, SPRITEMOVEDATA_STANDING_DOWN, 0, 0, -1, -1, 0, OBJECTTYPE_SCRIPT, 0, PlayersHouse2F_KenScript, EVENT_GOT_A_POKEMON_FROM_ELM	
-	object_event  6,  1, SPRITE_FAIRY, SPRITEMOVEDATA_STILL, 0, 0, -1, -1, 0, OBJECTTYPE_SCRIPT, 0, PlayersHouseDollScript, -1	
+	object_event  6,  1, SPRITE_FAIRY, SPRITEMOVEDATA_STILL, 0, 0, -1, -1, 0, OBJECTTYPE_SCRIPT, 0, PlayersHouseDollScript, -1
+	object_event  5,  3, SPRITE_ROCKER, SPRITEMOVEDATA_STANDING_DOWN, 0, 0, -1, -1, 0, OBJECTTYPE_SCRIPT, 0, PlayersHouse2F_CardMinigame, -1
+	object_event  3,  3, SPRITE_ROCKER, SPRITEMOVEDATA_STANDING_DOWN, 0, 0, -1, -1, 0, OBJECTTYPE_SCRIPT, 0, PlayersHouse2F_CardMinigame2, -1
+
+
+PlayersHouse2F_CardMinigame:
+	giveitem COIN_CASE
+	givecoins 20
+	giveitem KEY_HOLDER
+	giveitem BALL_HOLDER
+	giveitem TMHM_HOLDER
+	refreshscreen
+	setval FALSE
+	special UnusedMemoryGame
+	closetext
+	end
+
+PlayersHouse2F_CardMinigame2:
+	giveitem COIN_CASE
+	givecoins 20
+	giveitem KEY_HOLDER
+	giveitem BALL_HOLDER
+	giveitem TMHM_HOLDER
+	refreshscreen
+	setval FALSE
+	special CardFlip
+	closetext
+	special PlayMapMusic
+	end

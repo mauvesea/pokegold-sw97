@@ -435,5 +435,5 @@ Tealburg_PicrossScript:
 Tealburg_PicrossText:
 	text "Pick a puzzle!"
 	para "A: fill  B: mark"
-	line "START when solved."
+	line "SELECT: give up."
 	done

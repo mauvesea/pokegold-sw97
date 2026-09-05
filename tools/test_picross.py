@@ -58,7 +58,8 @@ def run(rom, cgb):
     with tempfile.TemporaryDirectory(prefix='picross-test-') as directory:
         copy = Path(directory) / 'game.gb'
         copy.write_bytes(rom.read_bytes())
-        for stage in range(6):
+
+        def launch(stage):
             p = PyBoy(str(copy), window='null', sound_emulated=False, cgb=cgb)
             p.set_emulation_speed(0)
             p.tick(600)
@@ -86,7 +87,16 @@ def run(rom, cgb):
             p.tick(1)
             p.hook_deregister(*syms['DelayFrame'])
             assert not armed
+
+            sfx_events = []
+            def record_sfx(_):
+                sfx_events.append(p.register_file.E)
+            p.hook_register(*syms['PlaySFX'], record_sfx, None)
             p.tick(240)
+            return p, sfx_events
+
+        for stage in range(6):
+            p, sfx_events = launch(stage)
             def read(name):
                 return p.memory[addr(name)]
             def press(key, frames=2, rest=20):
@@ -102,10 +112,10 @@ def run(rom, cgb):
             assert list(p.memory[addr('wPicrossBitmap'):addr('wPicrossBitmap') + 256]) == expected
             assert read('wJumptableIndex') == 1
             if stage == 0:
-                press('a'); assert read('wPicrossMarkedCells') == 1
-                press('a'); assert read('wPicrossMarkedCells') == 0
-                press('b'); assert read('wPicrossMarkedCells') == 2
-                press('b'); assert read('wPicrossMarkedCells') == 0
+                press('a'); assert read('wPicrossMarkedCells') == 1; assert sfx_events[-1] == 0x1b
+                press('a'); assert read('wPicrossMarkedCells') == 0; assert sfx_events[-1] == 0x17
+                press('b'); assert read('wPicrossMarkedCells') == 2; assert sfx_events[-1] == 0x24
+                press('b'); assert read('wPicrossMarkedCells') == 0; assert sfx_events[-1] == 0x17
                 press('left'); press('up')
                 assert tuple(p.memory[cursor() + 4:cursor() + 6]) == (64, 64)
                 press('right', 160); press('down', 160)
@@ -132,20 +142,50 @@ def run(rom, cgb):
 
             # Cover every filled cell and all 16 packed-grid drawing routines.
             # Position the cursor directly to avoid coupling coverage to travel time.
-            for cell, filled in enumerate(expected):
-                if not filled:
-                    continue
+            filled_cells = [cell for cell, filled in enumerate(expected) if filled]
+            for cell in filled_cells[:-1]:
                 p.memory[cursor() + 4:cursor() + 6] = [64 + 6 * (cell % 16), 64 + 6 * (cell // 16)]
                 press('a')
                 assert p.memory[addr('wPicrossMarkedCells') + cell] == 1, (stage, cell)
+
+            # Release the final A before observing the solved-state transition.
+            cell = filled_cells[-1]
+            p.memory[cursor() + 4:cursor() + 6] = [64 + 6 * (cell % 16), 64 + 6 * (cell // 16)]
+            p.button_press('a')
+            p.tick(2)
+            p.button_release('a')
+            while read('wJumptableIndex') == 1:
+                p.tick(1)
             assert read('wJumptableIndex') == 2, (stage, 'completion')
+            assert sfx_events[-2:] == [0x1b, 0x01], (stage, sfx_events[-2:])
             assert p.memory[cursor()] == 0, 'completed cursor must be deallocated'
-            press('start')
+
+            exit_frames = 0
+            while read('wJumptableIndex') != 0x82 and exit_frames < 190:
+                p.tick(1)
+                exit_frames += 1
+            assert 177 <= exit_frames <= 181, (stage, exit_frames)
             assert read('wJumptableIndex') == 0x82
             assert p.memory[start - 1] == 0xa5
             assert all(v == 0x5a for v in p.memory[end:addr('wOverworldMapBlocksEnd')])
             p.stop(save=False)
             print(f'{rom.name} {"CGB" if cgb else "DMG"}: stage {stage + 1} passed')
+
+        # Select gives up, plays its sound, waits the same three seconds, and exits.
+        p, sfx_events = launch(0)
+        p.button_press('select')
+        p.tick(2)
+        p.button_release('select')
+        give_up_frames = 0
+        while p.memory[addr('wJumptableIndex')] != 0x82 and give_up_frames < 190:
+            p.tick(1)
+            give_up_frames += 1
+        assert sfx_events[-1] == 0x0e
+        assert 177 <= give_up_frames <= 181, give_up_frames
+        assert p.memory[start - 1] == 0xa5
+        assert all(v == 0x5a for v in p.memory[end:addr('wOverworldMapBlocksEnd')])
+        p.stop(save=False)
+        print(f'{rom.name} {"CGB" if cgb else "DMG"}: Select give-up passed')
 
 
 if __name__ == '__main__':

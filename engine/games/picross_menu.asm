@@ -93,6 +93,8 @@ PlayPicrossFromOverworld::
 	ld a, 1
 	ldh [hInMenu], a
 	call PicrossSetupPalettes
+	ld de, MUSIC_GAME_CORNER
+	call PlayMusic
 	call PicrossMinigame
 	call ClearBGPalettes
 	farcall ClearSpriteAnims
@@ -117,11 +119,12 @@ PlayPicrossFromOverworld::
 	call ExitAllMenus
 ; Reload clock glyphs and both window rows after Picross overwrote their VRAM.
 	farcall ToolgearClockTextboxClosed
+	call RestartMapMusic
 	ret
 
 PicrossSetupPalettes:
-; Match the prototype's monochrome shades on DMG, SGB and CGB.
-	ld b, SCGB_BATTLE_GRAYSCALE
+; Use the Trainer Card palette on SGB. CGB retains the grayscale board palette.
+	ld b, SCGB_TRAINER_CARD
 	call GetSGBLayout
 	ldh a, [hCGB]
 	and a

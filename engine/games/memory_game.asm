@@ -1,4 +1,5 @@
 _MemoryGame:
+
 	call .LoadGFXAndPals
 	call DelayFrame
 .loop
@@ -7,7 +8,17 @@ _MemoryGame:
 	ret
 
 .LoadGFXAndPals:
+	ld hl, wOptions
+	set NO_TEXT_SCROLL, [hl]
+	call ClearBGPalettes
+	call ClearTilemap
+	call ClearSprites
+	ld de, MUSIC_NONE
+	call PlayMusic
+	call DelayFrame
 	call DisableLCD
+	call LoadStandardFont
+	call LoadFontsExtra
 	ld b, SCGB_DIPLOMA
 	call GetSGBLayout
 	callfar ClearSpriteAnims
@@ -19,27 +30,32 @@ _MemoryGame:
 	ld bc, 4 tiles
 	ld a, BANK(MemoryGameGFX)
 	call FarCopyBytes
+
 	ld a, SPRITE_ANIM_DICT_ARROW_CURSOR
 	ld hl, wSpriteAnimDict
 	ld [hli], a
-	ld [hl], $00
+	ld [hl], 0
+
 	hlcoord 0, 0
 	ld bc, SCREEN_HEIGHT * SCREEN_WIDTH
 	xor a
 	call ByteFill
+
 	xor a
 	ldh [hSCY], a
 	ldh [hSCX], a
 	ldh [rWY], a
 	ld [wJumptableIndex], a
-	ld a, $1
+	ld a, 1
 	ldh [hBGMapMode], a
-	ld a, LCDC_DEFAULT
+	ld a, %11100011
 	ldh [rLCDC], a
-	ld a, $e4
-	call DmgToCgbBGPals
-	ld a, $e0
-	call DmgToCgbObjPal0
+	ld a, %11100100
+	ldh [rBGP], a
+	ld a, %11100000
+	ldh [rOBP0], a
+	ld de, MUSIC_GAME_CORNER
+	call PlayMusic
 	ret
 
 .JumptableLoop:
@@ -53,6 +69,10 @@ _MemoryGame:
 	ret
 
 .quit
+	ld de, SFX_QUIT_SLOTS
+	call WaitSFX
+	call PlaySFX
+	call WaitSFX
 	scf
 	ret
 
@@ -77,7 +97,7 @@ _MemoryGame:
 	ret
 
 .ResetBoard:
-	call UnusedCursor_InterpretJoypad_AnimateCursor
+	call MemoryGameBetAmount
 	jr nc, .proceed
 	ld hl, wJumptableIndex
 	set 7, [hl]
@@ -95,6 +115,7 @@ rept 4
 endr
 	ld [hl], a
 	ld [wMemoryGameNumCardsMatched], a
+
 .InitBoardTilemapAndCursorObject:
 	ld hl, wMemoryGameCounter
 	ld a, [hl]
@@ -111,17 +132,50 @@ endr
 	depixel 6, 3, 4, 4
 	ld a, SPRITE_ANIM_OBJ_MEMORY_GAME_CURSOR
 	call InitSpriteAnimStruct
-	ld a, 5
-	ld [wMemoryGameNumberTriesRemaining], a
 	ld hl, wJumptableIndex
 	inc [hl]
 	ret
 
 .CheckTriesRemaining:
 	ld a, [wMemoryGameNumberTriesRemaining]
-	hlcoord 17, 0
+	cp 10
+	jr nc, .two_digits
+
+	; 1–9
+	hlcoord 18, 1
 	add "0"
 	ld [hl], a
+
+	hlcoord 17, 1
+	xor a
+	ld [hl], a
+	jr .check_remaining
+
+.two_digits
+	; 10–20
+	ld a, [wMemoryGameNumberTriesRemaining]
+	cp 20
+	jr z, .twenty
+
+	; 10–19
+	hlcoord 17, 1
+	ld a, "1"
+	ld [hli], a
+
+	ld a, [wMemoryGameNumberTriesRemaining]
+	sub 10
+	add "0"
+	ld [hl], a
+	jr .check_remaining
+
+.twenty
+	hlcoord 17, 1
+	ld a, "2"
+	ld [hli], a
+	ld a, "0"
+	ld [hl], a
+
+.check_remaining
 	ld hl, wMemoryGameNumberTriesRemaining
 	ld a, [hl]
 	and a
@@ -130,12 +184,14 @@ endr
 	ld [wJumptableIndex], a
 	ret
 
+
 .next_try
 	dec [hl]
 	xor a
 	ld [wMemoryGameCardChoice], a
 	ld hl, wJumptableIndex
 	inc [hl]
+
 .PickCard1:
 	ld a, [wMemoryGameCardChoice]
 	and a
@@ -185,6 +241,7 @@ endr
 	ld [wMemoryGameCounter], a
 	ld hl, wJumptableIndex
 	inc [hl]
+
 .DelayPickAgain:
 	ld hl, wMemoryGameCounter
 	ld a, [hl]
@@ -195,9 +252,20 @@ endr
 
 .PickAgain:
 	call MemoryGame_CheckMatch
+
+	ld a, [wMemoryGameNumCardsMatched]
+    cp 10
+    jr nc, .game_won
+
 	ld a, $3
 	ld [wJumptableIndex], a
 	ret
+
+.game_won
+	call MemoryGamePayout
+	ld a, $7
+    ld [wJumptableIndex], a
+    ret
 
 .RevealAll:
 	ldh a, [hJoypadPressed]
@@ -205,6 +273,7 @@ endr
 	ret z
 	xor a
 	ld [wMemoryGameCounter], a
+
 .RevelationLoop:
 	ld hl, wMemoryGameCounter
 	ld a, [hl]
@@ -231,8 +300,9 @@ endr
 	call WaitPressAorB_BlinkCursor
 	ld hl, wJumptableIndex
 	inc [hl]
+
 .AskPlayAgain:
-	call UnusedCursor_InterpretJoypad_AnimateCursor
+	call MemoryGameYesOrNo
 	jr nc, .restart
 	ld hl, wJumptableIndex
 	set 7, [hl]
@@ -290,6 +360,11 @@ MemoryGame_CheckMatch:
 	call MemoryGame_PlaceCard
 	ld hl, .VictoryText
 	call PrintText
+	push de
+	ld de, SFX_LEVEL_UP
+	call PlaySFX
+	call WaitSFX
+	pop de
 	ret
 
 .no_match
@@ -306,6 +381,11 @@ MemoryGame_CheckMatch:
 
 	ld hl, MemoryGameDarnText
 	call PrintText
+	push de
+	ld de, SFX_WRONG
+	call PlaySFX
+	call WaitSFX
+	pop de
 	ret
 
 .VictoryText:
@@ -326,6 +406,10 @@ MemoryGameYeahText:
 
 MemoryGameDarnText:
 	text_far _MemoryGameDarnText
+	text_end
+
+MemoryGameYouWon:
+	text_far _MemoryGameYouWon
 	text_end
 
 MemoryGame_InitBoard:
@@ -399,6 +483,8 @@ MemoryGame_SampleTilePlacement:
 	ret
 
 MemoryGame_GetDistributionOfTiles:
+	ld hl, MemoryGameDummyText
+	call PrintText
 	ld a, [wMenuCursorY]
 	dec a
 	ld l, a
@@ -451,21 +537,21 @@ MemoryGame_InitStrings:
 	ld a, $1
 	call ByteFill
 	hlcoord 0, 0
-	ld de, .japstr1
+	ld de, MemoryGameTopLeftString
 	call PlaceString
 	hlcoord 15, 0
-	ld de, .japstr2
+	ld de, MemoryGameTopRightString
 	call PlaceString
-	ld hl, .dummy_text
+	ld hl, MemoryGameDummyText
 	call PrintText
 	ret
 
-.dummy_text
+MemoryGameDummyText:
 	db "@"
-.japstr1
-	db "とったもの@"
-.japstr2
-	db "あと　かい@"
+MemoryGameTopLeftString:
+	db "PAIRS@";"とったもの@"
+MemoryGameTopRightString:
+	db "TRIES@";"あと　かい@"
 
 MemoryGame_Card2Coord:
 	ld d, 0
@@ -586,5 +672,210 @@ MemoryGame_InterpretJoypad_AnimateCursor:
 	ld [hl], a
 	ret
 
+MemoryGameYesOrNo:
+	ld hl, wCoins
+	ld a, [hli]
+	or [hl]
+	jr nz, .menu
+
+	ld hl, MemoryGameNoCoinsText
+	call PrintText
+	ld c, 60
+	call DelayFrames
+	jr .yes
+
+.menu:
+	ld hl, MemoryGameReplayText
+	call PrintText
+
+	call YesNoBox
+	jr c, .yes
+	and a
+	ret
+
+.yes:
+	scf
+	ret
+
+MemoryGameAskBetText:
+	text "1 COIN per try."
+	line "How MANY tries？"
+	done
+
+MemoryGameNotEnoughCoinsText:
+	text "Not enough"
+	line "coins."
+	prompt
+
+MemoryGameBetWindow:
+	db	%01000000
+	db	5, 14, 11, 19
+	dw	.text
+	db	1
+.text:
+	db STATICMENU_CURSOR | STATICMENU_NO_TOP_SPACING | STATICMENU_WRAP ; flags
+	db	3
+	db	"×20@"
+	db	"×10@"
+	db	"×5@"
+
+MemoryGameBetAmount:
+	ld hl, MemoryGameAskBetText
+	call PrintText
+
+	call MemoryGamePrintCoinBalance
+
+	ld hl, MemoryGameBetWindow
+	call LoadMenuHeader
+	call VerticalMenu
+	call CloseWindow
+	ret c
+
+	ld a, [w2DMenuDataEnd]
+
+	ld hl, .table
+	dec a
+	ld e, a
+	ld d, $00
+	add hl, de
+	ld c, [hl]
+
+	ld hl, wCoins
+	ld a, [hli]
+	and a
+	jr nz, .CheckBet
+	ld a, [hl]
+	cp c
+	jr nc, .CheckBet
+	ld hl, MemoryGameNotEnoughCoinsText
+	call PrintText
+	jr MemoryGameBetAmount
+
+.CheckBet:
+	ld hl, wCoins + 1
+	ld a, [hl]
+	sub c
+	ld [hld], a
+	jr nc, .SetBet
+	dec [hl]
+.SetBet:
+	push bc
+	hlcoord 15, 16
+	ld de, wCoins
+	lb bc, PRINTNUM_LEADINGZEROS | 2, 4
+	call PrintNum
+	ld de, SFX_PAY_DAY
+	call WaitSFX
+	call PlaySFX
+	call WaitSFX
+	pop bc
+	ld a, c
+	ld [wMemoryGameNumberTriesRemaining], a
+	and a
+	ret
+
+.table:
+	db 20, 10, 5
+
+MemoryGameNoCoinsText:
+	text_far _SlotsRanOutOfCoinsText
+	text_end
+
+MemoryGameReplayText:
+	text_far _SlotsPlayAgainText
+	text_end
+
+MemoryGameCoinString:
+	db "COIN@"
+
 MemoryGameLZ:
 INCBIN "gfx/memory_game/memory_game.2bpp.lz"
+
+MemoryGameGFX:
+INCBIN "gfx/battle_anims/pointer.2bpp"
+
+
+MemoryGamePayout:
+	ld c, 30
+	ld de, SFX_2ND_PLACE
+	push bc
+	push de
+	ld hl, MemoryGameYouWon
+	call MemoryGameUpdateCoinBalanceDisplay
+	pop de
+	call PlaySFX
+	call WaitSFX
+	pop bc
+.loop
+	push bc
+	call .IsCoinCaseFull
+	jr c, .full
+	call .AddCoinPlaySFX
+
+.full
+	call MemoryGamePrintCoinBalance
+	ld c, 2
+	call DelayFrames
+	pop bc
+	dec c
+	jr nz, .loop
+	ret
+
+.AddCoinPlaySFX:
+	ld a, [wCoins]
+	ld h, a
+	ld a, [wCoins + 1]
+	ld l, a
+	inc hl
+	ld a, h
+	ld [wCoins], a
+	ld a, l
+	ld [wCoins + 1], a
+	ld de, SFX_PAY_DAY
+	call PlaySFX
+	ret
+
+.IsCoinCaseFull:
+	ld a, [wCoins]
+	cp HIGH(MAX_COINS)
+	jr c, .less
+	jr z, .check_low
+	jr .more
+
+.check_low
+	ld a, [wCoins + 1]
+	cp LOW(MAX_COINS)
+	jr c, .less
+
+.more
+	scf
+	ret
+
+.less
+	and a
+	ret
+
+
+MemoryGameUpdateCoinBalanceDisplay:
+	push hl
+	hlcoord 0, 12
+	ld b, 4
+	ld c, SCREEN_WIDTH - 2
+	call Textbox
+	pop hl
+	call PrintTextboxText
+	call MemoryGamePrintCoinBalance
+	ret
+
+MemoryGamePrintCoinBalance:
+	hlcoord 9, 15
+	lb bc, 1, 9
+	call Textbox
+	hlcoord 10, 16
+	ld de, MemoryGameCoinString
+	call PlaceString
+	hlcoord 15, 16
+	ld de, wCoins
+	lb bc, PRINTNUM_LEADINGZEROS | 2, 4
+	call PrintNum
+	ret

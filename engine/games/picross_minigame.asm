@@ -257,6 +257,9 @@ PicrossMinigame:
 	call Picross_GetJoypad
 	ldh a, [hJoyDown]
 	ld [wPicrossJoyStateBuffer], a
+	ld a, [wJumptableIndex]
+	cp PICROSS_EXIT_MODE
+	ret z
 	ld hl, wPicrossCursorMovementDelay
 	ld a, [hl]
 	and a
@@ -281,12 +284,22 @@ PicrossMinigame:
 	ret
 
 .RunMode:
+	ldh a, [hJoyPressed]
+	and SELECT
+	jr nz, .gave_up
 	call Picross_CheckPuzzleSolved
 	jr c, .solved
 	call Picross_ProcessJoypad
 	ret
 
+.gave_up
+	ld de, SFX_SHUT_DOWN_PC
+	jr .begin_exit
+
 .solved
+	ld de, SFX_ITEM
+
+.begin_exit
 ; Deallocate the cursor sprite
 	ld hl, wPicrossCursorSpritePointer
 	ld c, [hl]
@@ -296,16 +309,19 @@ PicrossMinigame:
 	add hl, bc
 	ld [hl], 0
 
-; Exit Picross minigame
+	call Picross_PlaySFX
+	ld a, 3 * 60 - 1
+	ld [wPicrossCursorMovementDelay], a
+
+; Wait three seconds before automatically exiting Picross.
 	ld hl, wJumptableIndex
 	inc [hl]
+	ret
 
 .ExitMode:
-	ldh a, [hJoyPressed]
-	and START
-	ret z
-
-; Game will truly exit once the Start button is pressed
+	ld hl, wPicrossCursorMovementDelay
+	dec [hl]
+	ret nz
 	ld hl, wJumptableIndex
 	set 7, [hl]
 	ret
@@ -538,8 +554,31 @@ Picross_ProcessJoypad:
 	ld [wPicrossAnimateDust], a
 	call Picross_DetermineGridCoord
 	call Picross_MarkCell
+	call .PlayCellSFX
 	call Picross_InitDustObject
 	ret
+
+.PlayCellSFX:
+	ld a, [wPicrossCurrentCellType]
+	and a
+	jr z, .cleared
+	ld a, [wPicrossJoypadAction]
+	and a
+	ld de, SFX_STRENGTH
+	jr z, .play
+	ld de, SFX_BUMP
+	jr .play
+.cleared
+	ld de, SFX_GRASS_RUSTLE
+.play
+	jp Picross_PlaySFX
+
+Picross_PlaySFX:
+; Picross actions replace one another immediately. Bump has lower global
+; priority than Strength, so bypass priority suppression to honor every input.
+	ld a, -1
+	ld [wCurSFX], a
+	jp PlaySFX
 
 Picross_InitDustObject:
 	ld hl, wPicrossCursorSpritePointer

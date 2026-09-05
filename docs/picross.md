@@ -31,9 +31,15 @@ animation functions contain no sound calls, so no sound substitution was needed.
 
 D-pad moves the cursor by six pixels within the 16×16 board, with the original
 eight-update movement delay. A toggles a filled square, B toggles a cross, and
-holding A/B while moving paints with the selected cell type. Completing every
-filled cell removes the cursor; press Start to leave. As in the source, Start
-**does not abandon an unfinished puzzle**. B cancels the stage-selection menu.
+holding A/B while moving paints with the selected cell type. Filling and marking
+use `SFX_STRENGTH` and `SFX_BUMP`; clearing either uses `SFX_GRASS_RUSTLE`.
+Completing every filled cell plays `SFX_ITEM`, waits three seconds, and returns
+to the map automatically. Select gives up before completion, plays
+`SFX_SHUT_DOWN_PC`, waits three seconds, and returns. B cancels stage selection.
+
+Picross plays `MUSIC_GAME_CORNER` while active and restores the map music on
+return. On SGB, it uses the same palette packet and all-palette-zero block map
+as the Trainer Card. CGB retains the grayscale board palette.
 
 The board, clues, packed-tile drawing routines, player movement, cursor blink,
 and dust frames follow the source. The port uses interrupt-sampled button edges
@@ -115,15 +121,19 @@ python tools/test_picross.py pokegold.sgb pokesilver.sgb pokegold_debug.sgb poke
 
 The checks use temporary ROM copies, no player save, and a test-only entry
 trampoline in emulator memory. They verify linked bounds, independent expected
-bitmaps, clue generation, A/B toggling and drag painting, cursor limits, every puzzle's filled
-cells, solved-state cursor deletion, Start exit, and untouched WRAM sentinels.
-All 48 stage/variant/hardware-mode combinations passed (DMG and forced CGB mode).
-SGB palette setup uses the existing grayscale layout; SGB hardware was not tested.
+bitmaps, clue generation, A/B sounds, toggling and drag painting, cursor limits,
+every puzzle's filled cells, solved-state sound and automatic timed exit, Select
+give-up sound and timed exit, and untouched WRAM sentinels. All 48
+stage/variant/hardware-mode combinations and eight give-up paths passed (DMG and
+forced CGB mode).
+SGB palette setup uses the existing Trainer Card layout; SGB hardware was not
+tested.
 
 Additional emulator integration checks used a disposable copy of the existing
 save: approach and talk to the NPC, scroll/select all six stages, cancel with B,
-complete/return from each stage, and start a second game without reloading.
-Map-block and party bytes were unchanged on return. Menu, puzzle and restored
-town/clock screens were visually inspected. Integration completion used an
-injected solved bitmap; the standalone checks fill each required cell through
-actual A-button processing.
+complete/return from each stage, give up with Select, and start a second game
+without reloading. Game Corner music was active during Picross; map music,
+map-block bytes, party bytes, and the Toolgear clock were restored on return.
+Menu, puzzle and restored town/clock screens were visually inspected.
+Integration completion used an injected solved bitmap; the standalone checks
+fill each required cell through actual A-button processing.

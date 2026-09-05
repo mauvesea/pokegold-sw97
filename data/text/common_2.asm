@@ -990,6 +990,10 @@ _MemoryGameDarnText::
 	text "Darn…"
 	done
 
+_MemoryGameYouWon::
+	text "That's a wrap!"
+	done
+
 _StartMenuContestEndText::
 	text "Would you like to"
 	line "end the Contest?"
