@@ -14,6 +14,7 @@ PicrossMinigame:
 	ret
 
 .Init:
+	call ClearBGPalettes
 	call DisableLCD
 	xor a
 	ldh [hBGMapMode], a
@@ -53,12 +54,6 @@ PicrossMinigame:
 
 	ld a, %11100011
 	ldh [rLCDC], a
-	ld a, %11100100
-	call DmgToCgbBGPals
-	ld a, %11010000
-	ld e, a
-	ld d, a
-	call DmgToCgbObjPals
 
 	xor a ; PICROSS_BLANK_CELL
 	ld [wPicrossCurrentCellType], a
@@ -279,6 +274,14 @@ PicrossMinigame:
 
 .InitMode:
 	call .PlaceBGMapTiles
+; Keep the screen white until all three tilemap thirds reach window map 1.
+	call WaitBGMap
+	ld a, %11100100
+	call DmgToCgbBGPals
+	ld a, %11010000
+	ld e, a
+	ld d, a
+	call DmgToCgbObjPals
 	ld hl, wJumptableIndex
 	inc [hl]
 	ret
@@ -310,10 +313,10 @@ PicrossMinigame:
 	ld [hl], 0
 
 	call Picross_PlaySFX
-	ld a, 3 * 60 - 1
+	ld a, 60 - 1
 	ld [wPicrossCursorMovementDelay], a
 
-; Wait three seconds before automatically exiting Picross.
+; Wait one second before automatically exiting Picross.
 	ld hl, wJumptableIndex
 	inc [hl]
 	ret

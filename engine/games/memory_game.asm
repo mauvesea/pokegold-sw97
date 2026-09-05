@@ -699,7 +699,7 @@ MemoryGameYesOrNo:
 
 MemoryGameAskBetText:
 	text "1 COIN per try."
-	line "How MANY tries？"
+	line "Play？"
 	done
 
 MemoryGameNotEnoughCoinsText:

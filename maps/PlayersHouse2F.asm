@@ -111,6 +111,9 @@ PlayersHousePCScript:
 	end
 	
 PlayersHouseRadioScript:
+	setflag ENGINE_RADIO_CARD
+	setflag ENGINE_MAP_CARD
+	setflag ENGINE_PHONE_CARD
 	setflag ENGINE_POKEDEX
 	opentext
 	givepoke CHIKORITA, 5

@@ -105,17 +105,18 @@ Landmarks:
 	landmark 140, 116, FastShipName
 	assert_table_length NUM_LANDMARKS
 
-NewBarkTownName:     db "TEAL BURG@"
-CherrygroveCityName: db "CHERRYGROVE¯CITY@"
-VioletCityName:      db "VIOLET CITY@"
-AzaleaTownName:      db "AZALEA TOWN@"
-GoldenrodCityName:   db "GOLDENROD¯CITY@"
-EcruteakCityName:    db "ECRUTEAK¯CITY@"
-OlivineCityName:     db "OLIVINE¯CITY@"
-CianwoodCityName:    db "CIANWOOD¯CITY@"
-MahoganyTownName:    db "MAHOGANY¯TOWN@"
-BlackthornCityName:  db "BLACKTHORN¯CITY@"
-LakeOfRageName:      db "LAKE OF¯RAGE@"
+NewBarkTownName:     db "TURQUOISE TOWN@" ; SILENT HILL
+CherrygroveCityName: db "TERRACOTTA CITY@" ; OLD
+VioletCityName:      db "GRAPHITE CITY@" ; WEST
+AzaleaTownName:      db "AMBER TOWN@" ; BIRDON
+GoldenrodCityName:   db "MAGENTA CITY@" ; HITECH
+EcruteakCityName:    db "OCHRE TOWN@" ; FONT
+OlivineCityName:     db "CYAN CITY@" ; NEWTYPE
+CianwoodCityName:    db "SUGAR TOWN@" ; SUGAR
+MahoganyTownName:    db "PERIWINKLE CITY@" ; BLUE FOREST
+BlackthornCityName:  db "JADE CITY@" ; STAND
+LakeOfRageName:      db "KANTO@" ; KANTOOOOOO
+; NORTH > COTTON ISLAND  | SOUTH > CRIMSON ISLAND
 SilverCaveName:      db "SILVER CAVE@"
 SproutTowerName:     db "SPROUT¯TOWER@"
 RuinsOfAlphName:     db "RUINS¯OF ALPH@"

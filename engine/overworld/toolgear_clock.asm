@@ -15,6 +15,11 @@ ToolgearClockTextboxOpened::
 	ld a, SCREEN_HEIGHT_PX
 	ldh [hWY], a
 	ldh [rWY], a
+	; If the Toolgear's LCD interrupt already ran this frame, sprites are off.
+	; Restore them now because the visible flag prevents the VBlank restore.
+	ldh a, [rLCDC]
+	set rLCDC_SPRITES_ENABLE, a
+	ldh [rLCDC], a
 	ret
 
 ToolgearClockTextboxClosed::
@@ -81,7 +86,7 @@ RenderToolgearClock::
 	ld bc, SCREEN_WIDTH
 	call ByteFill
 
-	ld de, wBGMapBuffer + SCREEN_WIDTH
+	ld de, wBGMapBuffer + SCREEN_WIDTH + 1
 	ldh a, [hHours]
 	call .PrintTwoDigits
 	ld a, $7f
@@ -145,8 +150,12 @@ RenderToolgearClock::
 	ret
 
 LoadToolgearClockGFX::
-; Load the digit tiles into their Toolgear slots, then load the letters for
-; the active weekday into $63-$6b.
+; Load the separator and digit tiles into their Toolgear slots, then load the
+; letters for the active weekday into $63-$6b.
+	ld de, Font + (CHARVAL(":") - $80) * LEN_1BPP_TILE
+	ld hl, vTiles2 tile $6c
+	lb bc, BANK(Font), 1
+	call Request1bpp
 	ld de, Font + (CHARVAL("0") - $80) * LEN_1BPP_TILE
 	ld hl, vTiles2 tile $6d
 	lb bc, BANK(Font), 3

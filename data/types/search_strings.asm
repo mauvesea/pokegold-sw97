@@ -18,5 +18,5 @@ PokedexTypeSearchStrings:
 	db " GHOST  @"
 	db " DRAGON @"
 	db "  DARK  @"
-	db " STEEL  @"
+	db " METAL  @"
 	assert_table_length NUM_TYPES + 1

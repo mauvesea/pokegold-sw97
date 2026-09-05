@@ -33,9 +33,9 @@ D-pad moves the cursor by six pixels within the 16×16 board, with the original
 eight-update movement delay. A toggles a filled square, B toggles a cross, and
 holding A/B while moving paints with the selected cell type. Filling and marking
 use `SFX_STRENGTH` and `SFX_BUMP`; clearing either uses `SFX_GRASS_RUSTLE`.
-Completing every filled cell plays `SFX_ITEM`, waits three seconds, and returns
+Completing every filled cell plays `SFX_ITEM`, waits one second, and returns
 to the map automatically. Select gives up before completion, plays
-`SFX_SHUT_DOWN_PC`, waits three seconds, and returns. B cancels stage selection.
+`SFX_SHUT_DOWN_PC`, waits one second, and returns. B cancels stage selection.
 
 Picross plays `MUSIC_GAME_CORNER` while active and restores the map music on
 return. On SGB, it uses the same palette packet and all-palette-zero block map
@@ -110,6 +110,11 @@ The local Toolgear clock also writes window map 1 and masks sprites below LY=128
 Its rendering, queued transfer and sprite mask are suspended during Picross.
 Its glyphs and both window rows are regenerated after returning. Map animations
 are suspended, and menu/window state is restored around the game.
+The screen stays white until the complete board tilemap reaches VRAM. On exit,
+full-screen BG-map transfers are stopped before restoring the map destination
+and again after menu teardown, so they cannot overwrite the scrolling map.
+The overworld sprite set is also refreshed after menu teardown because its font
+load otherwise replaces the sprites' facing tiles.
 
 ## Verification
 
@@ -122,6 +127,7 @@ python tools/test_picross.py pokegold.sgb pokesilver.sgb pokegold_debug.sgb poke
 The checks use temporary ROM copies, no player save, and a test-only entry
 trampoline in emulator memory. They verify linked bounds, independent expected
 bitmaps, clue generation, A/B sounds, toggling and drag painting, cursor limits,
+the complete VRAM tilemap before the board palette becomes visible,
 every puzzle's filled cells, solved-state sound and automatic timed exit, Select
 give-up sound and timed exit, and untouched WRAM sentinels. All 48
 stage/variant/hardware-mode combinations and eight give-up paths passed (DMG and
@@ -137,3 +143,7 @@ map-block bytes, party bytes, and the Toolgear clock were restored on return.
 Menu, puzzle and restored town/clock screens were visually inspected.
 Integration completion used an injected solved bitmap; the standalone checks
 fill each required cell through actual A-button processing.
+Display regression checks also booted a disposable save with the rebuilt ROM,
+entered through the NPC, and walked in all four directions after exiting.
+Full-screen transfers stayed disabled and the scrolling VRAM tilemap matched
+the expected map tiles after each walk.

@@ -89,10 +89,32 @@ def run(rom, cgb):
             assert not armed
 
             sfx_events = []
+            revealing_board = False
+            board_verified = False
+            def preparing_board(_):
+                nonlocal revealing_board
+                revealing_board = True
+
+            def reveal_board(_):
+                nonlocal board_verified, revealing_board
+                if not revealing_board:
+                    return
+                # The first visible palette must never expose old menu tiles
+                # or a partially transferred board (VRAM rows have 32 columns).
+                for row in range(18):
+                    source = addr('wTilemap') + row * 20
+                    dest = 0x9c00 + row * 32
+                    assert list(p.memory[dest:dest + 20]) == list(p.memory[source:source + 20]), (stage, row, 'entry tilemap')
+                board_verified = True
+                revealing_board = False
+
+            p.hook_register(*syms['PicrossMinigame.InitMode'], preparing_board, None)
+            p.hook_register(*syms['DmgToCgbBGPals'], reveal_board, None)
             def record_sfx(_):
                 sfx_events.append(p.register_file.E)
             p.hook_register(*syms['PlaySFX'], record_sfx, None)
             p.tick(240)
+            assert board_verified, 'board was not verified before revealing it'
             return p, sfx_events
 
         for stage in range(6):
@@ -161,27 +183,27 @@ def run(rom, cgb):
             assert p.memory[cursor()] == 0, 'completed cursor must be deallocated'
 
             exit_frames = 0
-            while read('wJumptableIndex') != 0x82 and exit_frames < 190:
+            while read('wJumptableIndex') != 0x82 and exit_frames < 70:
                 p.tick(1)
                 exit_frames += 1
-            assert 177 <= exit_frames <= 181, (stage, exit_frames)
+            assert 57 <= exit_frames <= 61, (stage, exit_frames)
             assert read('wJumptableIndex') == 0x82
             assert p.memory[start - 1] == 0xa5
             assert all(v == 0x5a for v in p.memory[end:addr('wOverworldMapBlocksEnd')])
             p.stop(save=False)
             print(f'{rom.name} {"CGB" if cgb else "DMG"}: stage {stage + 1} passed')
 
-        # Select gives up, plays its sound, waits the same three seconds, and exits.
+        # Select gives up, plays its sound, waits the same one second, and exits.
         p, sfx_events = launch(0)
         p.button_press('select')
         p.tick(2)
         p.button_release('select')
         give_up_frames = 0
-        while p.memory[addr('wJumptableIndex')] != 0x82 and give_up_frames < 190:
+        while p.memory[addr('wJumptableIndex')] != 0x82 and give_up_frames < 70:
             p.tick(1)
             give_up_frames += 1
         assert sfx_events[-1] == 0x0e
-        assert 177 <= give_up_frames <= 181, give_up_frames
+        assert 57 <= give_up_frames <= 61, give_up_frames
         assert p.memory[start - 1] == 0xa5
         assert all(v == 0x5a for v in p.memory[end:addr('wOverworldMapBlocksEnd')])
         p.stop(save=False)

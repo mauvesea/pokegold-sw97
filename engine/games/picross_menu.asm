@@ -99,6 +99,9 @@ PlayPicrossFromOverworld::
 	call ClearBGPalettes
 	farcall ClearSpriteAnims
 	call ClearSprites
+; Stop Picross transfers before changing their destination back to the map.
+	xor a
+	ldh [hBGMapMode], a
 	pop af
 	ldh [hBGMapAddress + 1], a
 	pop af
@@ -117,6 +120,12 @@ PlayPicrossFromOverworld::
 	call CopyBytes
 	call CloseSRAM
 	call ExitAllMenus
+; ExitAllMenus loads the font after the preliminary sprite refresh. Reload the
+; complete overworld sprite set so its facing tiles replace that font data.
+	farcall RefreshSprites
+; ExitAllMenus leaves full-screen transfers enabled. Walking instead uses
+; the scrolling map buffer; repeated full-screen copies corrupt its tiles.
+	call ResetBGWindow
 ; Reload clock glyphs and both window rows after Picross overwrote their VRAM.
 	farcall ToolgearClockTextboxClosed
 	call RestartMapMusic
