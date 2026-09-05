@@ -61,6 +61,7 @@ SpriteAnimFrameData:
 	dw .Frameset_MinigamePicrossDust
 	dw .Frameset_MinigamePicrossGold1
 	dw .Frameset_MinigamePicrossGold2
+	dw .Frameset_GSTitleFlame
 	assert_table_length NUM_SPRITE_ANIM_FRAMESETS
 
 .Frameset_00:
@@ -411,3 +412,8 @@ ENDC
 .Frameset_MinigamePicrossGold1:
 	oamframe SPRITE_ANIM_OAMSET_RED_WALK_1, 8
 	oamend
+
+.Frameset_GSTitleFlame:
+	oamframe SPRITE_ANIM_OAMSET_GS_TITLE_FLAME_1, 3
+	oamframe SPRITE_ANIM_OAMSET_GS_TITLE_FLAME_2, 3
+	oamrestart

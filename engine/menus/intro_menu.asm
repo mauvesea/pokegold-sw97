@@ -947,7 +947,6 @@ IntroSequence:
 
 StartTitleScreen:
 	call TitleScreen
-	call DelayFrame
 .loop
 	call RunTitleScreen
 	jr nc, .loop
@@ -988,161 +987,21 @@ StartTitleScreen:
 INCLUDE "engine/movie/title.asm"
 
 RunTitleScreen:
-	call ScrollTitleScreenClouds
 	ld a, [wJumptableIndex]
 	bit 7, a
 	jr nz, .done_title
-	call TitleScreenScene
+	call TitleScreenSequence
 	ld a, $1
 	ldh [hOAMUpdate], a
 	farcall PlaySpriteAnimations
 	xor a
 	ldh [hOAMUpdate], a
-	call UpdateTitleTrailSprite
 	call DelayFrame
 	and a
 	ret
 
 .done_title
 	scf
-	ret
-
-ScrollTitleScreenClouds:
-	ldh a, [hVBlankCounter]
-	and $7
-	ret nz
-	ld hl, wLYOverrides + $5f
-	ld a, [hl]
-	dec a
-	ld bc, $28
-	call ByteFill
-	ret
-
-TitleScreenScene:
-	ld e, a
-	ld d, 0
-	ld hl, .scenes
-	add hl, de
-	add hl, de
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a
-	jp hl
-
-.scenes
-	dw TitleScreenTimer
-	dw TitleScreenMain
-	dw TitleScreenEnd
-
-TitleScreenNextScene: ; unreferenced
-	ld hl, wJumptableIndex
-	inc [hl]
-	ret
-
-TitleScreenTimer:
-; Next scene
-	ld hl, wJumptableIndex
-	inc [hl]
-
-; Start a timer
-	ld hl, wTitleScreenTimer
-	ld de, 84 * 60 + 16
-	ld [hl], e
-	inc hl
-	ld [hl], d
-	ret
-
-TitleScreenMain:
-; Run the timer down.
-	ld hl, wTitleScreenTimer
-	ld e, [hl]
-	inc hl
-	ld d, [hl]
-	ld a, e
-	or d
-	jr z, .end
-
-	dec de
-	ld [hl], d
-	dec hl
-	ld [hl], e
-
-; Save data can be deleted by pressing Up + B + Select.
-	call GetJoypad
-	ld hl, hJoyDown
-	ld a, [hl]
-	and D_UP + B_BUTTON + SELECT
-	cp  D_UP + B_BUTTON + SELECT
-	jr z, .delete_save_data
-
-; Clock can be reset by pressing Down + B + Select.
-	ld a, [hl]
-	and D_DOWN + B_BUTTON + SELECT
-	cp  D_DOWN + B_BUTTON + SELECT
-	jr z, .reset_clock
-
-; Press Start or A to start the game.
-	ld a, [hl]
-	and START | A_BUTTON
-	jr nz, .incave
-	ret
-
-.incave
-	ld a, TITLESCREENOPTION_MAIN_MENU
-	jr .done
-
-.delete_save_data
-	ld a, TITLESCREENOPTION_DELETE_SAVE_DATA
-
-.done
-	ld [wTitleScreenSelectedOption], a
-
-; Return to the intro sequence.
-	ld hl, wJumptableIndex
-	set 7, [hl]
-	ret
-
-.end
-; Next scene
-	ld hl, wJumptableIndex
-	inc [hl]
-
-; Fade out the title screen music
-	xor a ; MUSIC_NONE
-	ld [wMusicFadeID], a
-	ld [wMusicFadeID + 1], a
-	ld hl, wMusicFade
-	ld [hl], 8 ; 1 second
-
-	ld hl, wTitleScreenTimer
-	inc [hl]
-	ret
-
-.reset_clock
-	ld a, TITLESCREENOPTION_RESET_CLOCK
-	ld [wTitleScreenSelectedOption], a
-
-; Return to the intro sequence.
-	ld hl, wJumptableIndex
-	set 7, [hl]
-	ret
-
-TitleScreenEnd:
-; Wait until the music is done fading.
-
-	ld hl, wTitleScreenTimer
-	inc [hl]
-
-	ld a, [wMusicFade]
-	and a
-	ret nz
-
-	ld a, TITLESCREENOPTION_RESTART
-	ld [wTitleScreenSelectedOption], a
-
-; Back to the intro.
-	ld hl, wJumptableIndex
-	set 7, [hl]
 	ret
 
 DeleteSaveData:
@@ -1152,57 +1011,6 @@ DeleteSaveData:
 ResetClock:
 	farcall _ResetClock
 	jp Init
-
-UpdateTitleTrailSprite:
-	; If bit 0 or 1 of [wTitleScreenTimer] is set, we don't need to be here.
-	ld a, [wTitleScreenTimer]
-	and %00000011
-	ret nz
-	ld bc, wSpriteAnim10
-	ld hl, SPRITEANIMSTRUCT_FRAME
-	add hl, bc
-	ld l, [hl]
-	ld h, 0
-	add hl, hl
-	add hl, hl
-	ld de, .TitleTrailCoords
-	add hl, de
-	; If bit 2 of [wTitleScreenTimer] is set, get the second coords; else, get the first coords
-	ld a, [wTitleScreenTimer]
-	and %00000100
-	srl a
-	srl a
-	ld e, a
-	ld d, 0
-	add hl, de
-	add hl, de
-	ld a, [hli]
-	and a
-	ret z
-	ld e, a
-	ld d, [hl]
-	ld a, SPRITE_ANIM_OBJ_GS_TITLE_TRAIL
-	call InitSpriteAnimStruct
-	ret
-
-.TitleTrailCoords:
-MACRO trail_coords
-	rept _NARG / 2
-		DEF _dx = 4
-		if \1 == 0 && \2 == 0
-			DEF _dx = 0
-		endc
-		dbpixel \1, \2, _dx, 0
-		shift 2
-	endr
-ENDM
-	; frame 0 y, x; frame 1 y, x
-	trail_coords 11, 10,  0,  0
-	trail_coords 11, 13, 11, 11
-	trail_coords 11, 13, 11, 15
-	trail_coords 11, 17, 11, 15
-	trail_coords  0,  0, 11, 15
-	trail_coords  0,  0, 11, 11
 
 Copyright:
 	call ClearTilemap

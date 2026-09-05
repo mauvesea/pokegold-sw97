@@ -58,6 +58,7 @@ DoSpriteAnimFrame:
 	dw AnimSeq_GSIntroHoOhLugia
 	dw AnimSeq_MinigamePicrossCursor
 	dw AnimSeq_MinigamePicrossDust
+	dw AnimSeq_GSTitleFlame
 	assert_table_length NUM_SPRITE_ANIM_FUNCS
 
 AnimSeq_Null:
@@ -1517,4 +1518,61 @@ AnimSeq_MinigamePicrossDust:
 	ld [hl], $00
 	ld a, SPRITE_ANIM_FRAMESET_MINIGAME_PICROSS_GOLD_2
 	call _ReinitSpriteAnimFrame
+	ret
+
+AnimSeq_GSTitleFlame:
+	call AnimSeqs_AnonJumptable
+	jp hl
+
+.anon_dw
+	dw .init
+	dw .move
+
+.init
+	call AnimSeqs_IncAnonJumptableIndex
+	ld hl, SPRITEANIMSTRUCT_INDEX
+	add hl, bc
+	ld a, [hl]
+
+	ld hl, SPRITEANIMSTRUCT_VAR2
+	add hl, bc
+	and $3
+	ld [hl], a
+	inc [hl]
+	swap a
+
+	ld hl, SPRITEANIMSTRUCT_VAR1
+	add hl, bc
+	ld [hl], a
+
+.move
+	ld hl, SPRITEANIMSTRUCT_XCOORD
+	add hl, bc
+	ld a, [hl]
+
+	ld hl, SPRITEANIMSTRUCT_VAR2
+	add hl, bc
+	sub [hl]
+
+	ld hl, SPRITEANIMSTRUCT_XCOORD
+	add hl, bc
+	ld [hl], a
+
+	ld hl, SPRITEANIMSTRUCT_VAR2
+	add hl, bc
+	ld a, [hl]
+	sla a
+	sla a
+	ld d, a
+
+	ld hl, SPRITEANIMSTRUCT_VAR1
+	add hl, bc
+	ld a, [hl]
+	add 2
+	ld [hl], a
+	call AnimSeqs_Sine
+
+	ld hl, SPRITEANIMSTRUCT_YOFFSET
+	add hl, bc
+	ld [hl], a
 	ret

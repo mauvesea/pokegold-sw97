@@ -6,22 +6,32 @@ INCBIN "gfx/pokemon/egg/front.2bpp.lz"
 
 SECTION "Title Screen", ROMX
 
+TitleScreenGFX::
+INCBIN "gfx/title/title.2bpp"
+
 IF DEF(_GOLD)
-TitleScreenGFX1::
-INCBIN "gfx/title/logo_bottom_gold.2bpp.lz"
-TitleScreenGFX2::
-INCBIN "gfx/title/logo_top_gold.2bpp.lz"
+TitleScreenVersionGFX::
+INCBIN "gfx/title/title_gold_version.2bpp"
 
 ELIF DEF(_SILVER)
-TitleScreenGFX1::
-INCBIN "gfx/title/logo_bottom_silver.2bpp.lz"
-TitleScreenGFX2::
-INCBIN "gfx/title/logo_top_silver.2bpp.lz"
+TitleScreenVersionGFX::
+INCBIN "gfx/title/title_silver_version.2bpp"
 ENDC
 
-TitleScreenTilemap::
-INCBIN "gfx/title/logo.tilemap"
+TitleScreenHoOhGFX::
+INCBIN "gfx/title/title_hooh.2bpp"
 
+TitleScreenLogoGFX::
+INCBIN "gfx/title/title_logo.2bpp"
+
+IF DEF(_GOLD)
+TitleScreenVersionLogoGFX::
+INCBIN "gfx/title/title_goldlogo.2bpp"
+
+ELIF DEF(_SILVER)
+TitleScreenVersionLogoGFX::
+INCBIN "gfx/title/title_silverlogo.2bpp"
+ENDC
 
 SECTION "The End", ROMX
 
@@ -43,10 +53,11 @@ INCBIN "gfx/splash/copyright.2bpp"
 
 SECTION "Title Screen 2", ROMX
 
-TitleScreenGFX3::
-INCBIN "gfx/title/title_trail_gold.2bpp"
-TitleScreenGFX4::
-INCBIN "gfx/title/hooh_gold.2bpp.lz"
+TitleScreenFireGFX::
+INCBIN "gfx/title/fire.2bpp"
+
+TitleScreenDecorationGFX::
+INCBIN "gfx/title/titlebgdecoration.2bpp"
 
 
 SECTION "Shrink Pics", ROMX
